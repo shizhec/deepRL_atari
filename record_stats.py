@@ -69,4 +69,4 @@ class RecordStats:
 
 	def add_sess(self, sess):
 		self.sess = sess
-		self.summary_writer = tf.train.SummaryWriter('records/pong_test1', graph_def=sess.graph_def)
+		self.summary_writer = tf.train.SummaryWriter('records/pong_test2', graph_def=sess.graph_def)

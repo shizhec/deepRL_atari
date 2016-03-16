@@ -73,11 +73,19 @@ class ExperienceMemory:
 			# make sure none but last observation are terminal
 			assert not self.terminals[(index - self.observation_length + 1):index].any()
 
-			if self.size == self.capacity and len(indices) > 1:
-				print("index: {0}".format(index))
-				print("current {0}".format(self.current))
+			#if self.size >= self.capacity and len(indices) > 1:
+				#print("index: {0}".format(index))
+				#print("current {0}".format(self.current))
+				#print("size {0}".format(self.size))
 
-			state[count] = np.transpose(self.observations[((index - self.observation_length + 1)%self.capacity):((index + 1)%self.capacity)], [1,2,0]) # fix this
+				#print("slice: {0}".format([index-self.observation_length+1, (index+1)%self.capacity]))
+				#print("slice_shape: {0}".format(self.observations[((index - self.observation_length + 1)):((index + 1)%self.capacity)].shape))
+
+			frame_slice = np.arange(index - self.observation_length + 1, (index + 1))
+			frame_slice[-1] = frame_slice[-1] % self.capacity
+			state[count] = np.transpose(np.take(self.observations, frame_slice, axis=0), [1,2,0])
+
+			#state[count] = np.transpose(self.observations[((index - self.observation_length + 1)):((index + 1)%self.capacity):1], [1,2,0]) # fix this
 			count += 1
 
 		#print("State shape: {0}".format(state.shape))
@@ -88,7 +96,7 @@ class ExperienceMemory:
 	def get_current_state(self):
 		'''  Return most recent observation sequence '''
 
-		return self.get_state([self.current-1])
+		return self.get_state([(self.current-1)%self.capacity])
 
 
 	def get_batch(self):
