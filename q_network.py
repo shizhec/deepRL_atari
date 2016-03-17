@@ -7,7 +7,7 @@ import tensorflow as tf
 class QNetwork():
 
 	def __init__(self, conv_kernel_shapes, conv_strides, dense_layer_shapes, num_actions, observation_length, screen_height, screen_width, 
-		discount_factor, learning_rate, rmsprop_decay, rmsprop_constant, stats):
+		discount_factor, learning_rate, rmsprop_decay, rmsprop_constant, stats, load_model, name):
 		''' Build tensorflow graph for deep q network
 
 		Args:
@@ -27,6 +27,7 @@ class QNetwork():
 		self.discount_factor = tf.constant(discount_factor, name="discount_factor")
 
 		self.stats = stats
+		self.path = 'saved_models/dqn/' + name + '.ckpt'
 
 		# input placeholders
 		self.observation = tf.placeholder(tf.float32, shape=[None, screen_height, screen_width, observation_length], name="observation")
@@ -92,11 +93,21 @@ class QNetwork():
 
 		self.train_op = tf.train.RMSPropOptimizer(learning_rate, decay=rmsprop_decay, momentum=0.0, epsilon=rmsprop_constant).minimize(self.loss)
 
+		self.saver = tf.train.Saver(params)
+
 		# start tf session
 		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.6)  # avoid using all vram for GTX 970
 		self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-		self.sess.run(tf.initialize_all_variables())
-		self.stats.add_sess(self.sess)
+
+		if load_model:
+
+			self.saver.restore(self.sess, self.path)		
+		else:
+			self.sess.run(tf.initialize_all_variables())
+			
+
+		if stats != None:
+			self.stats.add_sess(self.sess)
 
 
 	def conv_relu(self, input_layer, target_input, kernel_shape, stride):
@@ -172,7 +183,8 @@ class QNetwork():
 		'''
 
 		q_values =  self.sess.run(self.q_layer, feed_dict={self.observation:obs})
-		self.stats.add_activations(q_values)
+		if self.stats != None:
+			self.stats.add_activations(q_values)
 		return q_values
 
 	def build_loss(self):
@@ -195,10 +207,15 @@ class QNetwork():
 		'''
 
 		loss = self.sess.run([self.train_op, self.loss], feed_dict={self.observation:o1, self.actions:a, self.rewards:r, self.next_observation:o2})[1]
-		self.stats.add_loss(loss)
+		if self.stats != None:
+			self.stats.add_loss(loss)
 
 
 	def update_target_network(self):
 		''' update weights and biases of target network '''
 
 		self.sess.run(self.update_target)
+
+	def save_model(self, g_step):
+
+		self.saver.save(self.sess, self.path, global_step=g_step)

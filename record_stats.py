@@ -3,7 +3,7 @@ import numpy as np
 
 class RecordStats:
 
-	def __init__(self):
+	def __init__(self, name):
 
 		self.reward = 0
 		self.loss = 0
@@ -11,6 +11,8 @@ class RecordStats:
 		self.activations = 0
 		self.act_count = 0
 		self.step = 0
+
+		self.path = 'records/' + name
 
 		with tf.device('/cpu:0'):
 			self.total_r = tf.placeholder(tf.float32, shape=[])
@@ -33,6 +35,8 @@ class RecordStats:
 		# print("l: {0}".format(self.loss))
 		# print("gp: {0}".format(self.games))
 		# print("act: {0}".format(self.activations))
+		if self.games == 0:
+			self.games = 1
 
 		summary_str = self.sess.run(self.summary_op, 
 			feed_dict={self.total_r:self.reward, self.total_l:self.loss, self.mean_a:self.activations, self.total_gp:self.games})
@@ -69,4 +73,4 @@ class RecordStats:
 
 	def add_sess(self, sess):
 		self.sess = sess
-		self.summary_writer = tf.train.SummaryWriter('records/pong_test2', graph_def=sess.graph_def)
+		self.summary_writer = tf.train.SummaryWriter(self.path, graph_def=sess.graph_def)

@@ -11,7 +11,8 @@ import sys
 
 class AtariEnvironment:
 
-	def __init__(self, rom, frame_skip, observation_length, screen_height, screen_width, buffer_length, blend_method, reward_processing, max_start_wait, stats):
+	def __init__(self, rom, frame_skip, observation_length, screen_height, screen_width, 
+		buffer_length, blend_method, reward_processing, max_start_wait, stats, show_screen):
 		''' Initialize Atari environment
 
 		Args:
@@ -38,6 +39,9 @@ class AtariEnvironment:
 		#Initialize ALE instance
 		self.ale = ALEInterface()
 		self.ale.setFloat(b'repeat_action_probability', 0.0)
+		if show_screen:
+			self.ale.setBool(b'sound', True)
+			self.ale.setBool(b'display_screen', True)
 		self.ale.loadROM(rom)
 
 		self.buffer = np.empty((self.buffer_length, 210, 160))

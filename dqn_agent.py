@@ -4,7 +4,7 @@ import numpy as np
 
 class DQNAgent():
 
-	def __init__(self, q_network, emulator, experience_memory, observation_length, training_frequency, 
+	def __init__(self, q_network, emulator, experience_memory, observation_length, num_actions, training_frequency, 
 		random_exploration_length, initial_exploration_rate, final_exploration_rate, final_exploration_frame, testing_exploration_rate, 
 		target_update_frequency):
 
@@ -12,7 +12,7 @@ class DQNAgent():
 		self.emulator = emulator
 		self.memory = experience_memory
 
-		self.num_actions = len(self.emulator.get_possible_actions())
+		self.num_actions = num_actions
 		self.observation_length = observation_length
 		self.training_frequency = training_frequency
 		self.random_exploration_length = random_exploration_length
@@ -79,6 +79,7 @@ class DQNAgent():
 
 			if self.total_steps % self.target_update_frequency == 0:
 				self.network.update_target_network()
+				self.network.save_model(self.total_steps)
 
 			if self.total_steps % self.training_frequency == 0:
 				batch = self.memory.get_batch()
