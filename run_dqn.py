@@ -87,7 +87,7 @@ def main():
 	MEMORY_CAPACITY = 1000000
 	BATCH_SIZE = 32
 
-	NAME = 'breakout_test2'
+	NAME = 'breakout_test3'
 	record_stats = RecordStats(NAME)
 
 	training_emulator = AtariEnvironment(ROM, FRAME_SKIP, OBSERVATION_LENGTH, SCREEN_HEIGHT, SCREEN_WIDTH, 

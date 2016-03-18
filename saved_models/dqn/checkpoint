@@ -1,6 +1,0 @@
-model_checkpoint_path: "breakout_test2.ckpt-7270000-12170000"
-all_model_checkpoint_paths: "breakout_test2.ckpt-7270000-12130000"
-all_model_checkpoint_paths: "breakout_test2.ckpt-7270000-12140000"
-all_model_checkpoint_paths: "breakout_test2.ckpt-7270000-12150000"
-all_model_checkpoint_paths: "breakout_test2.ckpt-7270000-12160000"
-all_model_checkpoint_paths: "breakout_test2.ckpt-7270000-12170000"

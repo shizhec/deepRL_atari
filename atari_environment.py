@@ -125,7 +125,7 @@ class AtariEnvironment:
 		return misc.imresize(img, self.screen_dims)
 
 	def isTerminal(self):
-		return (self.isGameOver() or self.lives < self.ale.lives())
+		return (self.isGameOver() or (self.lives > self.ale.lives()))
 
 
 	def isGameOver(self):
