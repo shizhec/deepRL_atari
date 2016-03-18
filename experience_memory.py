@@ -71,7 +71,7 @@ class ExperienceMemory:
 
 		for index in indices:
 			# make sure none but last observation are terminal
-			assert not self.terminals[(index - self.observation_length + 1):index].any()
+			# assert not self.terminals[(index - self.observation_length + 1):index].any()
 
 			#if self.size >= self.capacity and len(indices) > 1:
 				#print("index: {0}".format(index))

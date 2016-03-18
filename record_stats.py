@@ -27,6 +27,8 @@ class RecordStats:
 
 			self.score_per_game = self.total_r / self.total_gp
 			self.spg_summ = tf.scalar_summary('score_per_game', self.score_per_game)
+			self.mean_l = self.total_l / 2500
+			self.avg_l_summ = tf.scalar_summary('average_loss', self.mean_l)
 
 			self.summary_op = tf.merge_all_summaries()
 

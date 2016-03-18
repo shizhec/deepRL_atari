@@ -29,7 +29,10 @@ def run_experiment(agent, num_epochs, epoch_length, test_emulator, testing_steps
 
 	for epoch in range(num_epochs):
 
-		agent.run_epoch(epoch_length)
+		if epoch == 0:
+			agent.run_epoch(epoch_length - agent.random_exploration_length)
+		else:
+			agent.run_epoch(epoch_length)
 
 		results = evaluate_agent(agent, test_emulator, testing_steps, testing_games)
 

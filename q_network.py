@@ -27,7 +27,7 @@ class QNetwork():
 		self.discount_factor = tf.constant(discount_factor, name="discount_factor")
 
 		self.stats = stats
-		self.path = 'saved_models/dqn/' + name + '.ckpt'
+		self.path = 'saved_models/dqn/' + name + '/' + name + '.ckpt'
 
 		# input placeholders
 		self.observation = tf.placeholder(tf.float32, shape=[None, screen_height, screen_width, observation_length], name="observation")
@@ -92,6 +92,7 @@ class QNetwork():
 		self.loss = self.build_loss()
 
 		self.train_op = tf.train.RMSPropOptimizer(learning_rate, decay=rmsprop_decay, momentum=0.0, epsilon=rmsprop_constant).minimize(self.loss)
+		#self.train_op = self.build_rmsprop_optimizer(learning_rate, rmsprop_decay, rmsprop_constant)
 
 		self.saver = tf.train.Saver(params)
 
@@ -100,8 +101,8 @@ class QNetwork():
 		self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 		if load_model:
-
-			self.saver.restore(self.sess, self.path)		
+			load_path = tf.train.latest_checkpoint('saved_models/dqn/' + name)
+			self.saver.restore(self.sess, load_path)		
 		else:
 			self.sess.run(tf.initialize_all_variables())
 			
@@ -192,8 +193,15 @@ class QNetwork():
 
 		predictions = tf.reduce_sum(tf.mul(self.q_layer, self.actions), 1)
 		optimality = tf.reduce_max(self.target_q_layer, 1)
-		targets = tf.add(self.rewards, tf.mul(self.discount_factor, optimality))
-		return tf.reduce_sum(tf.mul(0.5, tf.square(tf.sub(predictions, targets))))
+		targets = tf.stop_gradient(tf.add(self.rewards, tf.mul(self.discount_factor, optimality)))
+		difference = tf.abs(tf.sub(predictions, targets))
+
+		#gradient clipping  MAKE OPTIONAL
+		quadratic_part = tf.clip_by_value(difference, 0.0, 1.0)
+		linear_part = tf.sub(difference, quadratic_part)
+		errors = tf.add(tf.mul(0.5, tf.square(quadratic_part)), linear_part)
+
+		return tf.reduce_sum(errors)
 
 
 	def train(self, o1, a, r, o2):
@@ -216,6 +224,27 @@ class QNetwork():
 
 		self.sess.run(self.update_target)
 
+
 	def save_model(self, g_step):
 
 		self.saver.save(self.sess, self.path, global_step=g_step)
+
+
+	def build_rmsprop_optimizer(self, learning_rate, rmsprop_decay, rmsprop_constant):
+		optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+
+		grads_and_vars = optimizer.compute_gradients(self.loss)
+		grads = [gv[0] for gv in grads_and_vars]
+		params = [gv[1] for gv in grads_and_vars]
+
+		square_grads = [tf.square(grad) for grad in grads]
+		exp_mov_avg = tf.train.ExponentialMovingAverage(rmsprop_decay)  
+
+		update_avg_grads = exp_mov_avg.apply(grads) # ??? tf bug?
+		update_avg_square_grads = exp_mov_avg.apply(square_grads)
+
+		rms = tf.abs(tf.sqrt(exp_mov_avg.average(square_grads) - tf.square(exp_mov_avg.average(grads) + rmsprop_constant)))
+		rms_updates = grads / rms
+		train = opt.apply_gradients(zip(rms_updates, params))
+
+		return tf.group(update_avg_grads, update_avg_square_grads, train)
