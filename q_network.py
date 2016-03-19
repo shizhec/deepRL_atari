@@ -1,8 +1,5 @@
 import tensorflow as tf
 
-# TODO: custom rmsprop
-# TODO: clip delta?
-
 
 class QNetwork():
 
@@ -196,7 +193,7 @@ class QNetwork():
 		targets = tf.stop_gradient(tf.add(self.rewards, tf.mul(self.discount_factor, optimality)))
 		difference = tf.abs(tf.sub(predictions, targets))
 
-		#gradient clipping  MAKE OPTIONAL
+		#gradient clipping  TODO: make optional
 		quadratic_part = tf.clip_by_value(difference, 0.0, 1.0)
 		linear_part = tf.sub(difference, quadratic_part)
 		errors = tf.add(tf.mul(0.5, tf.square(quadratic_part)), linear_part)
@@ -238,13 +235,31 @@ class QNetwork():
 		params = [gv[1] for gv in grads_and_vars]
 
 		square_grads = [tf.square(grad) for grad in grads]
+
+		avg_grads = [tf.Variable(tf.ones(tf.shape(grad))) for grad in grads]
+		avg_square_grads = [tf.Variable(tf.ones(tf.shape(grad))) for grad in grads]
+
+		update_avg_grads = [grad_pair[0].assign((rms_decay * grad_pair[0]) + ((1 - rms_decay) * grad_pair[1])) 
+			for grad_pair in zip(avg_grads, grads)]
+		update_avg_square_grads = [grad_pair[0].assign((rms_decay * grad_pair[0]) + ((1 - rms_decay) * tf.square(grad_pair[1]))) 
+			for grad_pair in zip(avg_square_grads, grads)]
+
+		rms = [tf.abs(tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)) 
+			for avg_grad_pair in zip(avg_grads, avg_square_grads)]
+
+		rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
+		train = opt.apply_gradients(zip(rms_updates, params))
+
+
+		'''
 		exp_mov_avg = tf.train.ExponentialMovingAverage(rmsprop_decay)  
 
-		update_avg_grads = exp_mov_avg.apply(grads) # ??? tf bug?
+		update_avg_grads = exp_mov_avg.apply(grads) # ??? tf bug? Why doesn't this work?
 		update_avg_square_grads = exp_mov_avg.apply(square_grads)
 
 		rms = tf.abs(tf.sqrt(exp_mov_avg.average(square_grads) - tf.square(exp_mov_avg.average(grads) + rmsprop_constant)))
 		rms_updates = grads / rms
 		train = opt.apply_gradients(zip(rms_updates, params))
+		'''
 
 		return tf.group(update_avg_grads, update_avg_square_grads, train)
