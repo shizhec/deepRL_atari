@@ -4,7 +4,7 @@ Uses DeepMind's preproessing/initialization methods
 '''
 
 from ale_python_interface import ALEInterface
-from scipy import misc
+import cv2
 import random
 import numpy as np
 import sys
@@ -86,11 +86,18 @@ class AtariEnvironment:
 			self.ale.act(self.action_set[0])
 			self.get_screen()
 
+		state = [(self.preprocess(), 0, 0, False)]
+		for step in range(self.observation_length - 1):
+			state.append(run_step(0))
+
 		# make sure agent hasn't died yet
 		if self.isTerminal():
 			print("Agent lost during start wait.  Decreasing max_start_wait by 1")
 			self.max_start_wait -= 1
 			self.reset()
+			return self.get_initial_state
+
+		return state
 
 
 	def run_step(self, action):
@@ -110,7 +117,7 @@ class AtariEnvironment:
 		terminal = self.isTerminal()
 		self.lives = self.ale.lives()
 
-		return [self.preprocess(), action, reward, terminal]
+		return (self.preprocess(), action, reward, terminal)
 
 
 
@@ -122,7 +129,7 @@ class AtariEnvironment:
 		if self.blend_method == "max":
 			img = np.amax(self.buffer, axis=0)
 
-		return misc.imresize(img, self.screen_dims)
+		return cv2.resize(img, self.screen_dims, interpolation=cv2.INTER_LINEAR)
 
 	def isTerminal(self):
 		return (self.isGameOver() or (self.lives > self.ale.lives()))

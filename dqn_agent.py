@@ -24,19 +24,14 @@ class DQNAgent():
 
 		self.exploration_rate = initial_exploration_rate
 		self.total_steps = 0
-		self.wait_for_state = observation_length
 
-		self.test_state = [] # should this be a numpy array?
+		self.test_state = []
 
 
 
 	def choose_action(self, obs, epsilon):
 
-		action = None
-		if self.wait_for_state > 0:
-			self.wait_for_state -= 1
-			return 0
-		elif random.random() >= epsilon:
+		if random.random() >= epsilon:
 			if isinstance(obs, str):
 				obs = self.memory.get_current_state()
 			q_values = self.network.inference(obs)
@@ -47,11 +42,9 @@ class DQNAgent():
 
 	def checkGameOver(self):
 		if self.emulator.isGameOver():
-			if  self.wait_for_state > 0:
-				print("Agent lost during start wait.  Decreasing max_start_wait by 1")
-				self.emulator.max_start_wait -= 1
-			self.emulator.reset()
-			self.wait_for_state = self.observation_length
+			initial_state = self.emulator.reset()
+			for experience in initial_state:
+				self.memory.add(experience[0], experience[1], experience[2], experience[3])
 
 
 	def run_random_exploration(self):
@@ -90,9 +83,6 @@ class DQNAgent():
 
 			self.total_steps += 1
 
-			#if self.total_steps % 10000 == 0:
-				#print("total_steps(x10000): {0}".format(self.total_steps/10000))
-
 
 	def test_step(self, observation):
 
@@ -104,7 +94,3 @@ class DQNAgent():
 			action = self.choose_action(state, self.testing_exploration_rate)
 			self.test_state.pop(0)
 			return action
-
-
-	def test_reset(self):
-		self.test_state = []

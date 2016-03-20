@@ -16,8 +16,7 @@ def evaluate_agent(agent, test_emulator, testing_steps, testing_games):
 			step +=1
 
 		games += 1
-		test_emulator.reset()
-		agent.test_reset()
+		agent.test_state = test_emulator.reset()
 
 	return [reward / games, games]
 

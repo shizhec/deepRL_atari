@@ -1,4 +1,5 @@
 import sys
+import argparse
 from atari_environment import AtariEnvironment
 from experience_memory import ExperienceMemory
 from q_network import QNetwork
@@ -14,6 +15,30 @@ ROM = str.encode(sys.argv[1])
 
 def main():
 
+	# name type default help choices
+
+	parser = argparse.ArgumentParser()
+	parser.add_argument("--epochs", type=int, help="number of epochs", default=200)
+	parser.add_argument("--epoch_length", type=int, help="number of steps in an epoch", default=250000)
+	parser.add_argument("--test_steps", type=int, help="max number of steps per test", default=125000)
+	parser.add_argument("--test_episodes", type=int, help="max number of episodes per test", default=30)
+	parser.add_argument("--history_length", type=int, help="number of frames in a state", default=4)
+	parser.add_argument("--training_frequency", type=int, help="number of steps run before training", default=4)
+	parser.add_argument("--random_exploration_length", type=int, 
+		help="number of randomly-generated experiences to initially fill experience memory", default=50000)
+	parser.add_argument("--initial_exploration_rate", type=float, help="initial exploration rate", default=1.0)
+	parser.add_argument("--final_exploration_rate", type=float, help="final exploration rate from linear annealing", default=0.1)
+	parser.add_argument("--final_exploration_frame", type=int, 
+		help="frame at which the final exploration rate is reached", default=1000000)
+	parser.add_argument("--test_exploration_rate", type=float, help="exploration rate while testing", default=0.05)
+	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
+	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
+	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
+	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
+	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
+	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
+	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
+	args = parser.parse_args()
 
 	# Experiment parameters
 
@@ -29,7 +54,6 @@ def main():
 	TEST_GAMES = 10
 	RANDOM_EXPLORATION_LENGTH = 100
 	'''
-
 
 	# Agent parameters
 	OBSERVATION_LENGTH = 4
