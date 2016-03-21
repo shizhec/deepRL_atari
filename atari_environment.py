@@ -11,14 +11,13 @@ import sys
 
 class AtariEnvironment:
 
-	def __init__(self, rom, frame_skip, observation_length, screen_height, screen_width, 
-		buffer_length, blend_method, reward_processing, max_start_wait, stats, show_screen):
+	def __init__(self, args, stats):
 		''' Initialize Atari environment
 
 		Args:
 			rom: path to atari ROM file
 			frame_skip: agent only sees every nth frame
-			observation_length: number of frames in an observation
+			history_length: number of frames in the agent's history
 			screen_height: height of screen after preprocessing
 			screen_width: width of screen after preprocessing
 			buffer_length: number of frames to blend to a single frame
@@ -28,21 +27,21 @@ class AtariEnvironment:
 		 '''
 
 		# Parameters
-		self.buffer_length = buffer_length
-		self.screen_dims = (screen_height, screen_width)
-		self.frame_skip = frame_skip
-		self.blend_method = blend_method
-		self.reward_processing = reward_processing
-		self.max_start_wait = max_start_wait
-		self.start_frames_needed = self.buffer_length - 1 + ((observation_length - 1) * self.frame_skip)
+		self.buffer_length = args.buffer_length
+		self.screen_dims = args.screen_dims
+		self.frame_skip = args.frame_skip
+		self.blend_method = args.blend_method
+		self.reward_processing = args.reward_processing
+		self.max_start_wait = args.max_start_wait
+		self.start_frames_needed = self.buffer_length - 1 + ((args.history_length - 1) * self.frame_skip)
 
 		#Initialize ALE instance
 		self.ale = ALEInterface()
 		self.ale.setFloat(b'repeat_action_probability', 0.0)
-		if show_screen:
+		if args.watch:
 			self.ale.setBool(b'sound', True)
 			self.ale.setBool(b'display_screen', True)
-		self.ale.loadROM(rom)
+		self.ale.loadROM(args.rom_path + '/' + args.game + '.bin')
 
 		self.buffer = np.empty((self.buffer_length, 210, 160))
 		self.current = 0
@@ -87,7 +86,7 @@ class AtariEnvironment:
 			self.get_screen()
 
 		state = [(self.preprocess(), 0, 0, False)]
-		for step in range(self.observation_length - 1):
+		for step in range(self.history_length - 1):
 			state.append(run_step(0))
 
 		# make sure agent hasn't died yet

@@ -1,23 +1,22 @@
 import sys
 import argparse
-from atari_environment import AtariEnvironment
+from atari_emulator import AtariEmulator
 from experience_memory import ExperienceMemory
 from q_network import QNetwork
 from dqn_agent import DQNAgent
 from record_stats import RecordStats
 import experiment
 
-if len(sys.argv) < 2:
-  print ("Usage: {0} rom_file".format(sys.argv[0]))
-  sys.exit()
-
-ROM = str.encode(sys.argv[1])
-
 def main():
 
-	# name type default help choices
+	parser = argparse.ArgumentParser('a program to train or run a deep q-learning agent')
+	parser.add_argument("name", type=str, help="unique name of this agent")
+	parser.add_argument("game", type=str, help="name of game to play")
+	parser.add_argument("--rom_path", type=str, help="path to directory containing atari game roms", default='roms')
+	parser.add_argument("--watch",
+		help="if true, a pretrained model with the specified name is loaded and tested with the game screen displayed", 
+		action='store_true')
 
-	parser = argparse.ArgumentParser()
 	parser.add_argument("--epochs", type=int, help="number of epochs", default=200)
 	parser.add_argument("--epoch_length", type=int, help="number of steps in an epoch", default=250000)
 	parser.add_argument("--test_steps", type=int, help="max number of steps per test", default=125000)
@@ -31,107 +30,77 @@ def main():
 	parser.add_argument("--final_exploration_frame", type=int, 
 		help="frame at which the final exploration rate is reached", default=1000000)
 	parser.add_argument("--test_exploration_rate", type=float, help="exploration rate while testing", default=0.05)
-	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
-	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
-	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
-	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
-	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
-	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
-	parser.add_argument("--epochs", type=int, help="Number of epochs", default=200)
+	parser.add_argument("--frame_skip", type=int, help="number of frames to repeat chosen action", default=4)
+	parser.add_argument("--screen_dims", type=tuple, help="dimensions to resize frames", default=(84,84))
+	# used for stochasticity and to help prevent overfitting.  
+	# Must be greater than frame_skip * (observation_length -1) + buffer_length - 1
+	parser.add_argument("--max_start_wait", type=int, help="max number of steps to wait for initial state", default=30)
+	# buffer_length = 1 prevents blending
+	parser.add_argument("--buffer_length", type=int, help="length of buffer to blend frames", default=2)
+	parser.add_argument("--blend_method", type=str, help="method used to blend frames", choices=('max'), default='max')
+	parser.add_argument("--reward_processing", type=str, help="method to process rewards", choices=('clip', 'none'), default='clip')
+	# must set network_architecture to custom in order use custom architecture
+	parser.add_argument("--conv_kernel_shapes", type=tuple, 
+		help="shapes of convnet kernels: ((height, width, in_channels, out_channels), (next layer))")
+	# must have same length as conv_kernel_shapes
+	parser.add_argument("--conv_strides", type=tuple, help="connvet strides: ((1, height, width, 1), (next layer))")
+	# currently,  you must have at least one dense layer
+	parser.add_argument("--dense_layer_shapes", type=tuple, help="shapes of dense layers: ((in_size, out_size), (next layer))")
+	parser.add_argument("--discount_factor", type=float, help="constant to discount future rewards", default=0.99)
+	parser.add_argument("--learning_rate", type=float, help="constant to scale parameter updates", default=0.00025)
+	parser.add_argument("--optimizer", type=str, help="optimization method for network", 
+		choices=('rmsprop', 'graves_rmsprop'), default='graves_rmsprop')
+	parser.add_argument("--rmsprop_decay", type=float, help="decay constant for moving average in rmsprop", default=0.95)
+	parser.add_argument("--rmsprop_epsilon", type=int, help="constant to stabilize rmsprop", default=0.01)
+	# set error_clipping to less than 0 to turn it off
+	parser.add_argument("error_clipping", type=str, help="constant at which td-error becomes linear instead of quadratic", default=1.0)
+	parser.add_argument("--target_update_frequency", type=int, help="number of steps between target network updates", default=10000)
+	parser.add_argument("--memory_capacity", type=int, help="max number of experiences to store in experience memory", default=1000000)
+	parser.add_argument("--batch_size", type=int, help="number of transitions sampled from memory during learning", default=32)
+	# must set to custom in order to specify custom architecture
+	parser.add_argument("--network_architecture", type=str, help="name of prespecified network architecture", 
+		choices=("deepmind_nips", "deepmind_nature, custom"), default="deepmind_nature")
+
+	# parser.add_argument("double_dqn", help="use double q-learning algorithm in error target calculation", action=store_true)
 	args = parser.parse_args()
 
-	# Experiment parameters
 
-	EPOCHS = 200
-	EPOCH_LENGTH = 250000
-	TEST_STEPS = 125000
-	TEST_GAMES = 30
+	if args.network_architecture == 'deepmind_nature':
+		args.conv_kernel_shapes = [
+			[8,8,4,32],
+			[4,4,32,64],
+			[3,3,64,64]]
+		args.conv_strides = [
+			[1,4,4,1],
+			[1,2,2,1],
+			[1,1,1,1]]
+		args.dense_layer_shapes = [[3136, 512]]
+	elif args.network_architecture == 'deepmind_nips':
+		args.conv_kernel_shapes = [
+			[8,8,4,16],
+			[4,4,16,32]]
+		args.conv_strides = [
+			[1,4,4,1],
+			[1,2,2,1]]
+		args.dense_layer_shapes = [[2592, 256]]
 
-	'''
-	EPOCHS = 100
-	EPOCH_LENGTH = 50000
-	TEST_STEPS = 10000
-	TEST_GAMES = 10
-	RANDOM_EXPLORATION_LENGTH = 100
-	'''
+	if not args.watch:
+		record_stats = RecordStats(args)
+		training_emulator = AtariEmulator(args, record_stats)
+		testing_emulator = AtariEmulator(args, record_stats)
+		num_actions = len(training_emulator.get_possible_actions())
+		experience_memory ExperienceMemory(args, num_actions)
+		q_network = QNetwork(args, num_actions, record_stats)
+		agent = DQNAgent(args, q_network, training_emulator, experience_memory, num_actions)
+		experiment.run_experiment(args, agent, testing_emulator)
 
-	# Agent parameters
-	OBSERVATION_LENGTH = 4
-	TRAINING_FREQUENCY = 4
-	RANDOM_EXPLORATION_LENGTH = 50000
-
-	INITIAL_EXPLORATION_RATE = 1.0
-	FINAL_EXPLORATION_RATE = 0.1
-	FINAL_EXPLORATION_FRAME = 1000000
-	TEST_EXPLORATION_RATE = 0.05
-
-
-	# Environment parameters
-	FRAME_SKIP = 4
-	SCREEN_HEIGHT = 84
-	SCREEN_WIDTH = 84
-	MAX_START_WAIT = 30
-	BUFFER_LENGTH = 2
-	BLEND_METHOD = "max"
-	REWARD_PROCESSING = "clip"
-	SHOW_SCREEN = False
-
-
-	# Network parameters
-
-	CONV_KERNAL_SHAPES = [
-		[8,8,4,32],
-		[4,4,32,64],
-		[3,3,64,64]]
-	CONV_STRIDES = [
-		[1,4,4,1],
-		[1,2,2,1],
-		[1,1,1,1]]
-	DENSE_LAYER_SHAPES = [[3136, 512]]
-	'''
-	CONV_KERNAL_SHAPES = [
-		[8,8,4,16],
-		[4,4,16,32]]
-	CONV_STRIDES = [
-		[1,4,4,1],
-		[1,2,2,1]]
-	DENSE_LAYER_SHAPES = [[2592, 256]]
-	'''
-
-	DISCOUNT_FACTOR = 0.99
-	LEARNING_RATE = 0.00025
-	RMSPROP_DECAY = 0.95
-	RMSPROP_CONSTANT = 0.01
-	TARGET_UPDATE_FREQUENCY = 10000
-	LOAD_MODEL = False
-
-
-	# Memory parameters
-
-	MEMORY_CAPACITY = 1000000
-	BATCH_SIZE = 32
-
-	NAME = 'breakout_test3'
-	record_stats = RecordStats(NAME)
-
-	training_emulator = AtariEnvironment(ROM, FRAME_SKIP, OBSERVATION_LENGTH, SCREEN_HEIGHT, SCREEN_WIDTH, 
-		BUFFER_LENGTH, BLEND_METHOD, REWARD_PROCESSING, MAX_START_WAIT, record_stats, SHOW_SCREEN)
-
-	testing_emulator = AtariEnvironment(ROM, FRAME_SKIP, OBSERVATION_LENGTH, SCREEN_HEIGHT, SCREEN_WIDTH, 
-		BUFFER_LENGTH, BLEND_METHOD, "none", MAX_START_WAIT, None, SHOW_SCREEN)
-
-	NUM_ACTIONS = len(training_emulator.get_possible_actions())
-
-	experience_memory = ExperienceMemory(MEMORY_CAPACITY, OBSERVATION_LENGTH, BATCH_SIZE, SCREEN_HEIGHT, SCREEN_WIDTH, NUM_ACTIONS)
-
-	q_network = QNetwork(CONV_KERNAL_SHAPES, CONV_STRIDES, DENSE_LAYER_SHAPES, NUM_ACTIONS, OBSERVATION_LENGTH, SCREEN_HEIGHT, SCREEN_WIDTH, 
-		DISCOUNT_FACTOR, LEARNING_RATE, RMSPROP_DECAY, RMSPROP_CONSTANT, record_stats, LOAD_MODEL, NAME)
-
-	agent = DQNAgent(q_network, training_emulator, experience_memory, OBSERVATION_LENGTH, NUM_ACTIONS, TRAINING_FREQUENCY, RANDOM_EXPLORATION_LENGTH, 
-		INITIAL_EXPLORATION_RATE, FINAL_EXPLORATION_RATE, FINAL_EXPLORATION_FRAME, TEST_EXPLORATION_RATE, TARGET_UPDATE_FREQUENCY)
-
-	experiment.run_experiment(agent, EPOCHS, EPOCH_LENGTH, testing_emulator, TEST_STEPS, TEST_GAMES)
-
+	else:
+		training_emulator = AtariEmulator(args, None)
+		testing_emulator = AtariEmulator(args, None)
+		num_actions = len(training_emulator.get_possible_actions())
+		q_network = QNetwork(args, num_actions, None)
+		agent = DQNAgent(args, q_network, None, None, num_actions)
+		experiment.evaluate_agent(args, agent, testing_emulator)
 
 if __name__ == "__main__":
     main()
