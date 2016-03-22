@@ -22,17 +22,17 @@ def evaluate_agent(args, agent, test_emulator):
 
 
 
-def run_experiment(args, agent, test_emulator):
+def run_experiment(args, agent, test_emulator, test_stats):
 	
 	agent.run_random_exploration()
 
-	for epoch in range(args.epochs):
+	for epoch in range(1, args.epochs + 1):
 
-		if epoch == 0:
-			agent.run_epoch(args.epoch_length - agent.random_exploration_length)
+		if epoch == 1:
+			agent.run_epoch(args.epoch_length - agent.random_exploration_length, epoch)
 		else:
-			agent.run_epoch(args.epoch_length)
+			agent.run_epoch(args.epoch_length, epoch)
 
 		results = evaluate_agent(args, agent, test_emulator)
-
 		print("Score for epoch {0}: {1}".format(epoch, results[0]))
+		test_stats.record(epoch)

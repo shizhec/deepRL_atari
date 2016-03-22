@@ -10,15 +10,7 @@ import random
 class ExperienceMemory:
 
 	def __init__(self, args, num_actions):
-		''' Initialize emtpy experience dataset.
-
-		Args:
-			capacity: max number of experiences to store
-			history_length: number of frames in agent's history
-			batch_size: size of training minibatch
-			screen_height: height of game screen
-			screen_width: width of game screen
-		'''
+		''' Initialize emtpy experience dataset. '''
 
 		# params
 		self.capacity = args.memory_capacity
@@ -72,23 +64,10 @@ class ExperienceMemory:
 			# make sure none but last observation are terminal
 			# assert not self.terminals[(index - self.history_length + 1):index].any()
 
-			#if self.size >= self.capacity and len(indices) > 1:
-				#print("index: {0}".format(index))
-				#print("current {0}".format(self.current))
-				#print("size {0}".format(self.size))
-
-				#print("slice: {0}".format([index-self.history_length+1, (index+1)%self.capacity]))
-				#print("slice_shape: {0}".format(self.observations[((index - self.history_length + 1)):((index + 1)%self.capacity)].shape))
-
 			frame_slice = np.arange(index - self.history_length + 1, (index + 1))
 			frame_slice[-1] = frame_slice[-1] % self.capacity
 			state[count] = np.transpose(np.take(self.observations, frame_slice, axis=0), [1,2,0])
-
-			#state[count] = np.transpose(self.observations[((index - self.history_length + 1)):((index + 1)%self.capacity):1], [1,2,0]) # fix this
 			count += 1
-
-		#print("State shape: {0}".format(state.shape))
-
 		return state
 
 
@@ -115,7 +94,7 @@ class ExperienceMemory:
 				continue
 
 			samples.append(index)
-		#endwhile
+		# endwhile
 		samples = np.asarray(samples)
 
 		# create batch

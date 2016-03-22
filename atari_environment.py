@@ -12,19 +12,7 @@ import sys
 class AtariEnvironment:
 
 	def __init__(self, args, stats):
-		''' Initialize Atari environment
-
-		Args:
-			rom: path to atari ROM file
-			frame_skip: agent only sees every nth frame
-			history_length: number of frames in the agent's history
-			screen_height: height of screen after preprocessing
-			screen_width: width of screen after preprocessing
-			buffer_length: number of frames to blend to a single frame
-			blend_method: method to blend frames from frame buffer.  Currently only 'max' is supported
-			reward_processing: method preprocess reward values.  Currently only 'clip' and 'none' are supported
-			max_start_wait: max number of frames to wait before handing control to agent
-		 '''
+		''' Initialize Atari environment '''
 
 		# Parameters
 		self.buffer_length = args.buffer_length
