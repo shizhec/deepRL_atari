@@ -1,6 +1,6 @@
 
 
-def evaluate_agent(args, agent, test_emulator):
+def evaluate_agent(args, agent, test_emulator, test_stats):
 	step = 0
 	games = 0
 	reward = 0.0
@@ -13,9 +13,13 @@ def evaluate_agent(args, agent, test_emulator):
 			results = test_emulator.run_step(action)
 			screen = results[0]
 			reward += results[2]
+			if not (test_stats is None):
+				test_stats.add_reward(results[4])
 			step +=1
 
 		games += 1
+		if not (test_stats is None):
+			test_stats.add_game()
 		agent.test_state = test_emulator.reset()
 
 	return [reward / games, games]
@@ -33,6 +37,6 @@ def run_experiment(args, agent, test_emulator, test_stats):
 		else:
 			agent.run_epoch(args.epoch_length, epoch)
 
-		results = evaluate_agent(args, agent, test_emulator)
+		results = evaluate_agent(args, agent, test_emulator, test_stats)
 		print("Score for epoch {0}: {1}".format(epoch, results[0]))
 		test_stats.record(epoch)

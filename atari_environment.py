@@ -11,7 +11,7 @@ import sys
 
 class AtariEnvironment:
 
-	def __init__(self, args, stats):
+	def __init__(self, args):
 		''' Initialize Atari environment '''
 
 		# Parameters
@@ -36,8 +36,6 @@ class AtariEnvironment:
 		self.action_set = self.ale.getMinimalActionSet()
 		self.lives = self.ale.lives()
 
-		self.stats = stats
-
 		self.reset()
 
 
@@ -54,8 +52,6 @@ class AtariEnvironment:
 	def reset(self):
 		self.ale.reset_game()
 		self.lives = self.ale.lives()
-		if self.stats != None:
-			self.stats.add_game()
 
 		if self.max_start_wait < 0:
 			print("ERROR: max start wait decreased beyond 0")
@@ -90,21 +86,20 @@ class AtariEnvironment:
 	def run_step(self, action):
 		''' Apply action to game and return next screen and reward '''
 
-		reward = 0
+		raw_reward = 0
 		for step in range(self.frame_skip):
-			reward += self.ale.act(self.action_set[action])
+			raw_reward += self.ale.act(self.action_set[action])
 			self.get_screen()
-
-		if self.stats != None:
-			self.stats.add_reward(reward)
 
 		if self.reward_processing == "clip:":
 			reward = np.clip(reward, -1, 1)
+		else:
+			reward = raw_reward
 
 		terminal = self.isTerminal()
 		self.lives = self.ale.lives()
 
-		return (self.preprocess(), action, reward, terminal)
+		return (self.preprocess(), action, reward, terminal, raw_reward)
 
 
 

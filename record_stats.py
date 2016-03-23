@@ -12,9 +12,8 @@ class RecordStats:
 		self.games = 0
 		self.q_values = 0.0
 		self.q_count = 0
-		# self.step = 0
 
-		self.path = 'records/' + args.game + '/' + args.name
+		self.path = 'records/' + args.game + '/' + args.agent_type + '/' + args.agent_name
 
 		with tf.device('/cpu:0'):
 			self.spg = tf.placeholder(tf.float32, shape=[])
@@ -49,7 +48,7 @@ class RecordStats:
 		if not self.test
 			summary_str = self.sess.run(self.summary_op, 
 				feed_dict={self.spg:score_per_game, self.mean_l:avg_loss, self.mean_a:mean_q_values, self.total_gp:self.games})
-			self.summary_writer.add_summary(summary_str, global_step=epoch) # something
+			self.summary_writer.add_summary(summary_str, global_step=epoch)
 		else:
 			summary_str = self.sess.run(self.summary_op, 
 				feed_dict={self.spg:score_per_game, self.mean_a:mean_q_values, self.total_gp:self.games})
@@ -65,7 +64,6 @@ class RecordStats:
 
 	def add_reward(self, r):
 		self.reward += r
-		# self.steps += 1
 
 	def add_loss(self, l):
 		self.loss += l
