@@ -196,8 +196,10 @@ class QNetwork():
 
 			'''
 			Double Q-Learning:
-			max_actions = tf.argmax(self.policy_q_layer, 1)
-			max_action_values = self.target_q_layer[action] CHANGE TO TF GATHER
+			max_actions = tf.argmax(self.gpu_q_layer, 1)
+			# tf.gather doesn't support multidimensional indexing yet, so we flatten output activations for indexing
+			indices = tf.range(0, tf.size(max_actions), num_actions) + max_actions
+			max_action_values = tf.gather(tf.reshape(self.target_q_layer, shape=[-1]), indices)
 			targets = tf.stop_gradient(self.rewards + (self.discount_factor * max_action_values))
 			'''
 
