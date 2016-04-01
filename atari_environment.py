@@ -4,52 +4,37 @@ Uses DeepMind's preproessing/initialization methods
 '''
 
 from ale_python_interface import ALEInterface
-from scipy import misc
+import cv2
 import random
 import numpy as np
 import sys
 
 class AtariEnvironment:
 
-	def __init__(self, rom, frame_skip, observation_length, screen_height, screen_width, 
-		buffer_length, blend_method, reward_processing, max_start_wait, stats, show_screen):
-		''' Initialize Atari environment
-
-		Args:
-			rom: path to atari ROM file
-			frame_skip: agent only sees every nth frame
-			observation_length: number of frames in an observation
-			screen_height: height of screen after preprocessing
-			screen_width: width of screen after preprocessing
-			buffer_length: number of frames to blend to a single frame
-			blend_method: method to blend frames from frame buffer.  Currently only 'max' is supported
-			reward_processing: method preprocess reward values.  Currently only 'clip' and 'none' are supported
-			max_start_wait: max number of frames to wait before handing control to agent
-		 '''
+	def __init__(self, args):
+		''' Initialize Atari environment '''
 
 		# Parameters
-		self.buffer_length = buffer_length
-		self.screen_dims = (screen_height, screen_width)
-		self.frame_skip = frame_skip
-		self.blend_method = blend_method
-		self.reward_processing = reward_processing
-		self.max_start_wait = max_start_wait
-		self.start_frames_needed = self.buffer_length - 1 + ((observation_length - 1) * self.frame_skip)
+		self.buffer_length = args.buffer_length
+		self.screen_dims = args.screen_dims
+		self.frame_skip = args.frame_skip
+		self.blend_method = args.blend_method
+		self.reward_processing = args.reward_processing
+		self.max_start_wait = args.max_start_wait
+		self.start_frames_needed = self.buffer_length - 1 + ((args.history_length - 1) * self.frame_skip)
 
 		#Initialize ALE instance
 		self.ale = ALEInterface()
 		self.ale.setFloat(b'repeat_action_probability', 0.0)
-		if show_screen:
+		if args.watch:
 			self.ale.setBool(b'sound', True)
 			self.ale.setBool(b'display_screen', True)
-		self.ale.loadROM(rom)
+		self.ale.loadROM(args.rom_path + '/' + args.game + '.bin')
 
 		self.buffer = np.empty((self.buffer_length, 210, 160))
 		self.current = 0
 		self.action_set = self.ale.getMinimalActionSet()
 		self.lives = self.ale.lives()
-
-		self.stats = stats
 
 		self.reset()
 
@@ -67,8 +52,6 @@ class AtariEnvironment:
 	def reset(self):
 		self.ale.reset_game()
 		self.lives = self.ale.lives()
-		if self.stats != None:
-			self.stats.add_game()
 
 		if self.max_start_wait < 0:
 			print("ERROR: max start wait decreased beyond 0")
@@ -86,31 +69,37 @@ class AtariEnvironment:
 			self.ale.act(self.action_set[0])
 			self.get_screen()
 
+		state = [(self.preprocess(), 0, 0, False)]
+		for step in range(self.history_length - 1):
+			state.append(run_step(0))
+
 		# make sure agent hasn't died yet
 		if self.isTerminal():
 			print("Agent lost during start wait.  Decreasing max_start_wait by 1")
 			self.max_start_wait -= 1
 			self.reset()
+			return self.get_initial_state
+
+		return state
 
 
 	def run_step(self, action):
 		''' Apply action to game and return next screen and reward '''
 
-		reward = 0
+		raw_reward = 0
 		for step in range(self.frame_skip):
-			reward += self.ale.act(self.action_set[action])
+			raw_reward += self.ale.act(self.action_set[action])
 			self.get_screen()
-
-		if self.stats != None:
-			self.stats.add_reward(reward)
 
 		if self.reward_processing == "clip:":
 			reward = np.clip(reward, -1, 1)
+		else:
+			reward = raw_reward
 
 		terminal = self.isTerminal()
 		self.lives = self.ale.lives()
 
-		return [self.preprocess(), action, reward, terminal]
+		return (self.preprocess(), action, reward, terminal, raw_reward)
 
 
 
@@ -122,7 +111,7 @@ class AtariEnvironment:
 		if self.blend_method == "max":
 			img = np.amax(self.buffer, axis=0)
 
-		return misc.imresize(img, self.screen_dims)
+		return cv2.resize(img, self.screen_dims, interpolation=cv2.INTER_LINEAR)
 
 	def isTerminal(self):
 		return (self.isGameOver() or (self.lives > self.ale.lives()))
