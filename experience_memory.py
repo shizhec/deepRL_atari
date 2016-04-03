@@ -20,10 +20,10 @@ class ExperienceMemory:
 		self.screen_dims = args.screen_dims
 
 		# initialize dataset
-		self.observations = np.empty((capacity, screen_dims[0], screen_dims[1]), dtype=np.uint8)
-		self.actions = np.empty(capacity, dtype=np.uint8)
-		self.rewards = np.empty(capacity, dtype=np.integer)
-		self.terminals = np.empty(capacity, dtype=np.bool)
+		self.observations = np.empty((self.capacity, self.screen_dims[0], self.screen_dims[1]), dtype=np.uint8)
+		self.actions = np.empty(self.capacity, dtype=np.uint8)
+		self.rewards = np.empty(self.capacity, dtype=np.integer)
+		self.terminals = np.empty(self.capacity, dtype=np.bool)
 
 		self.size = 0
 		self.current = 0

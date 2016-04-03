@@ -13,10 +13,9 @@ class RecordStats:
 		self.q_values = 0.0
 		self.q_count = 0
 
-		self.path = 'records/' + args.game + '/' + args.agent_type + '/' + args.agent_name
 
 		with tf.device('/cpu:0'):
-			self.spg = tf.placeholder(tf.float32, shape=[])
+			self.spg = tf.placeholder(tf.float32, shape=[], name="score_per_game")
 			self.mean_q = tf.placeholder(tf.float32, shape=[])
 			self.total_gp = tf.placeholder(tf.float32, shape=[])
 
@@ -25,33 +24,43 @@ class RecordStats:
 			self.gp_summ = tf.scalar_summary('games_played', self.total_gp)
 
 			if not test:
-				self.mean_l = tf.placeholder(tf.float32, shape=[])
+				self.mean_l = tf.placeholder(tf.float32, shape=[], name='loss')
 				self.l_summ = tf.scalar_summary('loss', self.mean_l)
+				self.summary_op = tf.merge_summary([self.spg_summ, self.q_summ, self.gp_summ, self.l_summ])
+				self.path = ('records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/train')
+			else:
+				self.summary_op = tf.merge_summary([self.spg_summ, self.q_summ, self.gp_summ])
+				self.path = ('records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/test')
 
-			self.summary_op = tf.merge_all_summaries()
+			# self.summary_op = tf.merge_all_summaries()
 			self.sess = tf.Session()
 			self.summary_writer = tf.train.SummaryWriter(self.path)
 
 	def record(self, epoch):
-		avg_loss = None
+		avg_loss = 0
 		if self.loss_count != 0:
 			avg_loss = self.loss / self.loss_count
 
-		mean_q_values = self.q_values / self.q_count
-		score_per_game = 0
+		mean_q_values = 0
+		if self.q_count > 0:
+			mean_q_values = self.q_values / self.q_count
+
+		score_per_game = 0.0
 
 		if self.games == 0:
 			score_per_game = self.reward
 		else:
 			score_per_game = self.reward / self.games
 
-		if not self.test
+		score_per_game = float(score_per_game)
+
+		if not self.test:
 			summary_str = self.sess.run(self.summary_op, 
-				feed_dict={self.spg:score_per_game, self.mean_l:avg_loss, self.mean_a:mean_q_values, self.total_gp:self.games})
+				feed_dict={self.spg:score_per_game, self.mean_l:avg_loss, self.mean_q:mean_q_values, self.total_gp:self.games})
 			self.summary_writer.add_summary(summary_str, global_step=epoch)
 		else:
 			summary_str = self.sess.run(self.summary_op, 
-				feed_dict={self.spg:score_per_game, self.mean_a:mean_q_values, self.total_gp:self.games})
+				feed_dict={self.spg:score_per_game, self.mean_q:mean_q_values, self.total_gp:self.games})
 			self.summary_writer.add_summary(summary_str, global_step=epoch)
 
 		self.reward = 0
@@ -74,6 +83,6 @@ class RecordStats:
 
 	def add_q_values(self, q_vals):
 		mean_q = np.mean(q_vals)
-		self.q_values += q_vals
+		self.q_values += mean_q
 		self.q_count += 1
 				

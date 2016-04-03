@@ -5,6 +5,8 @@ from experience_memory import ExperienceMemory
 from q_network import QNetwork
 from dqn_agent import DQNAgent
 from record_stats import RecordStats
+from parallel_q_network import ParallelQNetwork
+from parallel_dqn_agent import ParallelDQNAgent
 import experiment
 
 def main():
@@ -50,19 +52,20 @@ def main():
 	parser.add_argument("--discount_factor", type=float, help="constant to discount future rewards", default=0.99)
 	parser.add_argument("--learning_rate", type=float, help="constant to scale parameter updates", default=0.00025)
 	parser.add_argument("--optimizer", type=str, help="optimization method for network", 
-		choices=('rmsprop', 'graves_rmsprop'), default='graves_rmsprop')
+		choices=('rmsprop', 'graves_rmsprop'), default='rmsprop')
 	parser.add_argument("--rmsprop_decay", type=float, help="decay constant for moving average in rmsprop", default=0.95)
 	parser.add_argument("--rmsprop_epsilon", type=int, help="constant to stabilize rmsprop", default=0.01)
 	# set error_clipping to less than 0 to turn it off
-	parser.add_argument("error_clipping", type=str, help="constant at which td-error becomes linear instead of quadratic", default=1.0)
+	parser.add_argument("--error_clipping", type=str, help="constant at which td-error becomes linear instead of quadratic", default=1.0)
 	parser.add_argument("--target_update_frequency", type=int, help="number of steps between target network updates", default=10000)
 	parser.add_argument("--memory_capacity", type=int, help="max number of experiences to store in experience memory", default=1000000)
 	parser.add_argument("--batch_size", type=int, help="number of transitions sampled from memory during learning", default=32)
 	# must set to custom in order to specify custom architecture
 	parser.add_argument("--network_architecture", type=str, help="name of prespecified network architecture", 
 		choices=("deepmind_nips", "deepmind_nature, custom"), default="deepmind_nature")
+	parser.add_argument("--recording_frequency", type=int, help="number of steps before tensorboard recording", default=10000)
 
-	# parser.add_argument("--parallel", help="parallelize acting and learning", action=store_true)
+	parser.add_argument("--parallel", help="parallelize acting and learning", action='store_true')
 	# parser.add_argument("--double_dqn", help="use double q-learning algorithm in error target calculation", action=store_true)
 	args = parser.parse_args()
 
@@ -92,10 +95,8 @@ def main():
 		training_emulator = AtariEmulator(args)
 		testing_emulator = AtariEmulator(args)
 		num_actions = len(training_emulator.get_possible_actions())
-		experience_memory ExperienceMemory(args, num_actions)
-		q_network = QNetwork(args, num_actions)
-		agent = DQNAgent(args, q_network, training_emulator, experience_memory, num_actions, train_stats, test_stats)
-		'''
+		experience_memory = ExperienceMemory(args, num_actions)
+
 		q_network= None
 		agent = None
 		if args.parallel:
@@ -104,14 +105,14 @@ def main():
 		else:
 			q_network = QNetwork(args, num_actions)
 			agent = DQNAgent(args, q_network, training_emulator, experience_memory, num_actions, train_stats, test_stats)
-		'''
+
 		experiment.run_experiment(args, agent, testing_emulator, test_stats)
 
 	else:
-		training_emulator = AtariEmulator(args, None)
-		testing_emulator = AtariEmulator(args, None)
+		training_emulator = AtariEmulator(args)
+		testing_emulator = AtariEmulator(args)
 		num_actions = len(training_emulator.get_possible_actions())
-		q_network = QNetwork(args, num_actions, None)
+		q_network = QNetwork(args, num_actions)
 		agent = DQNAgent(args, q_network, None, None, num_actions, None, None)
 		experiment.evaluate_agent(args, agent, testing_emulator, None)
 

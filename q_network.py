@@ -3,7 +3,7 @@ import tensorflow as tf
 
 class QNetwork():
 
-	def __init__(args, num_actions):
+	def __init__(self, args, num_actions):
 		''' Build tensorflow graph for deep q network '''
 
 		self.discount_factor = args.discount_factor
@@ -23,7 +23,7 @@ class QNetwork():
 		last_policy_layer = None
 		last_target_layer = None
 		self.update_target = []
-		policy_network_params = []
+		self.policy_network_params = []
 
 		# initialize convolutional layers
 		for layer in range(num_conv_layers):
@@ -46,9 +46,9 @@ class QNetwork():
 			policy_input = None
 			target_input = None
 			if layer == 0:
-				input_size = dense_layer_shapes[0][0]
+				input_size = args.dense_layer_shapes[0][0]
 				policy_input = tf.reshape(last_policy_layer, shape=[-1, input_size])
-				target_input = tf.reshape(last_target_layer[-1], shape=[-1, input_size])
+				target_input = tf.reshape(last_target_layer, shape=[-1, input_size])
 			else:
 				policy_input = last_policy_layer
 				target_input = last_target_layer
@@ -64,19 +64,19 @@ class QNetwork():
 		self.policy_q_layer = last_layers[0]
 		self.target_q_layer = last_layers[1]
 
-		self.loss = self.build_loss(args.error_clipping)
+		self.loss = self.build_loss(args.error_clipping, num_actions)
 
 		self.train_op = None  # add options for more optimizers
-		if args.optimizer == 'rmsprop'
+		if args.optimizer == 'rmsprop':
 			self.train_op = tf.train.RMSPropOptimizer(
-				args.learning_rate, decay=args.rmsprop_decay, momentum=0.0, epsilon=args.rmsprop_constant).minimize(self.loss)
-		elif args.optimizer = 'graves_rmsprop'
-			self.train_op = self.build_rmsprop_optimizer(args.learning_rate, args.rmsprop_decay, args.rmsprop_constant)
+				args.learning_rate, decay=args.rmsprop_decay, momentum=0.0, epsilon=args.rmsprop_epsilon).minimize(self.loss)
+		elif args.optimizer == 'graves_rmsprop':
+			self.train_op = self.build_rmsprop_optimizer(args.learning_rate, args.rmsprop_decay, args.rmsprop_epsilon)
 
-		self.saver = tf.train.Saver(policy_network_params)
+		self.saver = tf.train.Saver(self.policy_network_params)
 
 		# start tf session
-		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.6)  # avoid using all vram for GTX 970
+		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)  # avoid using all vram for GTX 970
 		self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 		if args.watch:
@@ -95,7 +95,7 @@ class QNetwork():
 			kernel_shape: tuple for filter shape: (filter_height, filter_width, in_channels, out_channels)
 			stride: tuple for stride: (1, vert_stride. horiz_stride, 1)
 		'''
-		name = 'conv' + (layer_num + 1)
+		name = 'conv' + str(layer_num + 1)
 		with tf.variable_scope(name):
 
 			weights = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.01), name=(name + "_weights"))
@@ -124,7 +124,7 @@ class QNetwork():
 			target_input: input to layer of target network
 			shape: tuple for weight shape (num_input_nodes, num_layer_nodes)
 		'''
-		name = 'dense' + (layer_num + 1)
+		name = 'dense' + str(layer_num + 1)
 		with tf.variable_scope(name):
 
 			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
@@ -185,23 +185,22 @@ class QNetwork():
 		return self.sess.run(self.policy_q_layer, feed_dict={self.observation:obs})
 
 
-	def build_loss(self, error_clip):
+	def build_loss(self, error_clip, num_actions):
 		''' build loss graph '''
 		with tf.name_scope("loss"):
 
 			predictions = tf.reduce_sum(tf.mul(self.policy_q_layer, self.actions), 1)
-			optimality = tf.reduce_max(self.target_q_layer, 1)
-			targets = tf.stop_gradient(self.rewards + (self.discount_factor * optimality))
-			difference = tf.abs(predictions - targets)
+			# optimality = tf.reduce_max(self.target_q_layer, 1)
+			# targets = tf.stop_gradient(self.rewards + (self.discount_factor * optimality))
 
-			'''
-			Double Q-Learning:
-			max_actions = tf.argmax(self.gpu_q_layer, 1)
+			# Double Q-Learning:
+			max_actions = tf.to_int32(tf.argmax(self.policy_q_layer, 1))
 			# tf.gather doesn't support multidimensional indexing yet, so we flatten output activations for indexing
-			indices = tf.range(0, tf.size(max_actions), num_actions) + max_actions
+			indices = tf.range(0, tf.size(max_actions) * num_actions, num_actions) + max_actions
 			max_action_values = tf.gather(tf.reshape(self.target_q_layer, shape=[-1]), indices)
 			targets = tf.stop_gradient(self.rewards + (self.discount_factor * max_action_values))
-			'''
+
+			difference = tf.abs(predictions - targets)
 
 			if error_clip >= 0:
 				quadratic_part = tf.clip_by_value(difference, 0.0, error_clip)
@@ -264,15 +263,15 @@ class QNetwork():
 			train = opt.apply_gradients(zip(rms_updates, params))
 
 
-		'''
-		exp_mov_avg = tf.train.ExponentialMovingAverage(rmsprop_decay)  
+			'''
+			exp_mov_avg = tf.train.ExponentialMovingAverage(rmsprop_decay)  
 
-		update_avg_grads = exp_mov_avg.apply(grads) # ??? tf bug? Why doesn't this work?
-		update_avg_square_grads = exp_mov_avg.apply(square_grads)
+			update_avg_grads = exp_mov_avg.apply(grads) # ??? tf bug? Why doesn't this work?
+			update_avg_square_grads = exp_mov_avg.apply(square_grads)
 
-		rms = tf.abs(tf.sqrt(exp_mov_avg.average(square_grads) - tf.square(exp_mov_avg.average(grads) + rmsprop_constant)))
-		rms_updates = grads / rms
-		train = opt.apply_gradients(zip(rms_updates, params))
-		'''
+			rms = tf.abs(tf.sqrt(exp_mov_avg.average(square_grads) - tf.square(exp_mov_avg.average(grads) + rmsprop_constant)))
+			rms_updates = grads / rms
+			train = opt.apply_gradients(zip(rms_updates, params))
+			'''
 
 			return tf.group(update_avg_grads, update_avg_square_grads, train)

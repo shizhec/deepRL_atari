@@ -2,7 +2,7 @@
 import random
 import numpy as np
 
-class ParallelDQNAgent():
+class DQNAgent():
 
 	def __init__(self, args, q_network, emulator, experience_memory, num_actions, train_stats, test_stats):
 
@@ -17,8 +17,9 @@ class ParallelDQNAgent():
 		self.initial_exploration_rate = args.initial_exploration_rate
 		self.final_exploration_rate = args.final_exploration_rate
 		self.final_exploration_frame = args.final_exploration_frame
-		self.testing_exploration_rate = args.testing_exploration_rate
+		self.test_exploration_rate = args.test_exploration_rate
 		self.target_update_frequency = args.target_update_frequency
+		self.recording_frequency = args.recording_frequency
 
 		self.exploration_rate = self.initial_exploration_rate
 		self.total_steps = 0
@@ -36,7 +37,7 @@ class ParallelDQNAgent():
 			if obs is None:
 				obs = self.memory.get_current_state()
 			q_values = self.network.inference(obs)
-			if not (stats is None)
+			if not (stats is None):
 				stats.add_q_values(q_values)
 			return np.argmax(q_values)
 		else:
@@ -81,25 +82,27 @@ class ParallelDQNAgent():
 				loss = self.network.train(batch[0], batch[1], batch[2], batch[3])
 				self.train_stats.add_loss(loss)
 
-			if self.train_steps % self.target_update_frequency == 0:
+			if self.total_steps % self.target_update_frequency == 0:
 				self.network.update_target_network()
 
 			if self.total_steps < self.final_exploration_frame:
 				self.exploration_rate -= (self.exploration_rate - self.final_exploration_rate) / (self.final_exploration_frame - self.total_steps)
 
+			if self.total_steps % self.recording_frequency == 0:
+				self.train_stats.record(self.total_steps)
+
 			self.total_steps += 1
 
-		self.train_stats.record(epoch)
+		# self.train_stats.record(self.total_steps)
 		self.network.save_model(epoch)
 
 
 	def test_step(self, observation):
 
-		self.test_state.append(observation)
 		if len(self.test_state) < self.history_length:
-			return 0
-		else:
-			state = np.expand_dims(np.transpose(self.test_state, [1,2,0]), axis=0)
-			action = self.choose_action(state, self.testing_exploration_rate, self.test_stats)
-			self.test_state.pop(0)
-			return action
+			self.test_state.append(observation)
+
+		state = np.expand_dims(np.transpose(self.test_state, [1,2,0]), axis=0)
+		action = self.choose_action(state, self.test_exploration_rate, self.test_stats)
+		self.test_state.pop(0)
+		return action 

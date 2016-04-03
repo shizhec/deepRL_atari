@@ -4,10 +4,11 @@ def evaluate_agent(args, agent, test_emulator, test_stats):
 	step = 0
 	games = 0
 	reward = 0.0
-	test_emulator.reset()
+	reset = test_emulator.reset()
+	agent.test_state = list(next(zip(*reset)))
 	screen = test_emulator.preprocess()
 
-	while (step < args.testing_steps) and (games < args.testing_games):
+	while (step < args.test_steps) and (games < args.test_episodes):
 		while not test_emulator.isGameOver():
 			action = agent.test_step(screen)
 			results = test_emulator.run_step(action)
@@ -20,9 +21,10 @@ def evaluate_agent(args, agent, test_emulator, test_stats):
 		games += 1
 		if not (test_stats is None):
 			test_stats.add_game()
-		agent.test_state = test_emulator.reset()
+		reset = test_emulator.reset()
+		agent.test_state = list(next(zip(*reset)))
 
-	return [reward / games, games]
+	return reward / games
 
 
 
@@ -38,5 +40,11 @@ def run_experiment(args, agent, test_emulator, test_stats):
 			agent.run_epoch(args.epoch_length, epoch)
 
 		results = evaluate_agent(args, agent, test_emulator, test_stats)
-		print("Score for epoch {0}: {1}".format(epoch, results[0]))
-		test_stats.record(epoch)
+		print("Score for epoch {0}: {1}".format(epoch, results))
+		steps = 0
+		if args.parallel:
+			steps = agent.random_exploration_length + (agent.train_steps * args.training_frequency)
+		else:
+			steps = agent.total_steps
+
+		test_stats.record(steps)
