@@ -29,6 +29,8 @@ class DQNAgent():
 		if not (test_stats is None):
 			self.train_stats = train_stats
 			self.test_stats = test_stats
+		else:
+			self.test_stats = None
 
 
 	def choose_action(self, obs, epsilon, stats):

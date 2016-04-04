@@ -76,7 +76,7 @@ class QNetwork():
 		self.saver = tf.train.Saver(self.policy_network_params)
 
 		# start tf session
-		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)  # avoid using all vram for GTX 970
+		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333333)  # avoid using all vram for GTX 970
 		self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 		if args.watch:
@@ -99,7 +99,7 @@ class QNetwork():
 		with tf.variable_scope(name):
 
 			weights = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.01), name=(name + "_weights"))
-			biases = tf.Variable(tf.fill([kernel_shape[-1]], 0.01), name=(name + "_biases"))
+			biases = tf.Variable(tf.fill([kernel_shape[-1]], 0.1), name=(name + "_biases"))
 
 			activation = tf.nn.relu(tf.nn.conv2d(policy_input, weights, stride, 'VALID') + biases)
 
@@ -128,7 +128,7 @@ class QNetwork():
 		with tf.variable_scope(name):
 
 			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
-			biases = tf.Variable(tf.fill([shape[-1]], 0.01), name=(name + "_biases"))
+			biases = tf.Variable(tf.fill([shape[-1]], 0.1), name=(name + "_biases"))
 
 			activation = tf.nn.relu(tf.matmul(policy_input, weights) + biases)
 
@@ -157,7 +157,7 @@ class QNetwork():
 		with tf.variable_scope(name):
 
 			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
-			biases = tf.Variable(tf.fill([shape[-1]], 0.01), name=(name + "_biases"))
+			biases = tf.Variable(tf.fill([shape[-1]], 0.1), name=(name + "_biases"))
 
 			activation = tf.matmul(policy_input, weights) + biases
 
@@ -190,15 +190,17 @@ class QNetwork():
 		with tf.name_scope("loss"):
 
 			predictions = tf.reduce_sum(tf.mul(self.policy_q_layer, self.actions), 1)
-			# optimality = tf.reduce_max(self.target_q_layer, 1)
-			# targets = tf.stop_gradient(self.rewards + (self.discount_factor * optimality))
+			optimality = tf.reduce_max(self.target_q_layer, 1)
+			targets = tf.stop_gradient(self.rewards + (self.discount_factor * optimality))
 
+			'''
 			# Double Q-Learning:
 			max_actions = tf.to_int32(tf.argmax(self.policy_q_layer, 1))
 			# tf.gather doesn't support multidimensional indexing yet, so we flatten output activations for indexing
 			indices = tf.range(0, tf.size(max_actions) * num_actions, num_actions) + max_actions
 			max_action_values = tf.gather(tf.reshape(self.target_q_layer, shape=[-1]), indices)
 			targets = tf.stop_gradient(self.rewards + (self.discount_factor * max_action_values))
+			'''
 
 			difference = tf.abs(predictions - targets)
 
@@ -248,19 +250,20 @@ class QNetwork():
 
 			square_grads = [tf.square(grad) for grad in grads]
 
-			avg_grads = [tf.Variable(tf.ones(tf.shape(grad))) for grad in grads]
-			avg_square_grads = [tf.Variable(tf.ones(tf.shape(grad))) for grad in grads]
+			avg_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
+			avg_square_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
 
-			update_avg_grads = [grad_pair[0].assign((rms_decay * grad_pair[0]) + ((1 - rms_decay) * grad_pair[1])) 
+			update_avg_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * grad_pair[1])) 
 				for grad_pair in zip(avg_grads, grads)]
-			update_avg_square_grads = [grad_pair[0].assign((rms_decay * grad_pair[0]) + ((1 - rms_decay) * tf.square(grad_pair[1]))) 
+			update_avg_square_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * tf.square(grad_pair[1]))) 
 				for grad_pair in zip(avg_square_grads, grads)]
+			avg_grad_updates = update_avg_grads + update_avg_square_grads
 
 			rms = [tf.abs(tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)) 
 				for avg_grad_pair in zip(avg_grads, avg_square_grads)]
 
 			rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
-			train = opt.apply_gradients(zip(rms_updates, params))
+			train = optimizer.apply_gradients(zip(rms_updates, params))
 
 
 			'''
@@ -274,4 +277,4 @@ class QNetwork():
 			train = opt.apply_gradients(zip(rms_updates, params))
 			'''
 
-			return tf.group(update_avg_grads, update_avg_square_grads, train)
+			return tf.group(train, *avg_grad_updates)

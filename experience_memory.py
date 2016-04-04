@@ -61,11 +61,9 @@ class ExperienceMemory:
 		count = 0
 
 		for index in indices:
-			# make sure none but last observation are terminal
-			# assert not self.terminals[(index - self.history_length + 1):index].any()
 
 			frame_slice = np.arange(index - self.history_length + 1, (index + 1))
-			frame_slice[-1] = frame_slice[-1] % self.capacity
+			# frame_slice[-1] = frame_slice[-1] % self.capacity  #<- remove this line?  index should never be equal to capacity
 			state[count] = np.transpose(np.take(self.observations, frame_slice, axis=0), [1,2,0])
 			count += 1
 		return state
@@ -85,15 +83,15 @@ class ExperienceMemory:
 		while len(samples) < self.batch_size:
 
 			if self.size < self.capacity:  # make this better
-				index = random.randint(self.history_length, self.size-1)
+				index = random.randrange(self.history_length, self.current)
 			else:
 				# make sure state from index doesn't overlap with current's gap
-				index = (self.current + random.randint(self.history_length, self.size-1)) % self.capacity
+				index = (self.current + random.randrange(self.history_length, self.size-1)) % self.capacity
 			# make sure no terminal observations are in the first state
 			if self.terminals[(index - self.history_length):index].any():
 				continue
-
-			samples.append(index)
+			else:
+				samples.append(index)
 		# endwhile
 		samples = np.asarray(samples)
 
