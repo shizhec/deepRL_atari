@@ -1,0 +1,3 @@
+model_checkpoint_path: "ponger.ckpt-2"
+all_model_checkpoint_paths: "ponger.ckpt-1"
+all_model_checkpoint_paths: "ponger.ckpt-2"

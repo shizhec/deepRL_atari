@@ -15,6 +15,7 @@ class QNetwork():
 		self.actions = tf.placeholder(tf.float32, shape=[None, num_actions], name="actions") # one-hot matrix because tf.gather() doesn't support multidimensional indexing yet
 		self.rewards = tf.placeholder(tf.float32, shape=[None], name="rewards")
 		self.next_observation = tf.placeholder(tf.float32, shape=[None, args.screen_dims[0], args.screen_dims[1], args.history_length], name="next_observation")
+		self.terminals = tf.placeholder(tf.float32, shape=[None], name="terminals")
 
 		num_conv_layers = len(args.conv_kernel_shapes)
 		assert(num_conv_layers == len(args.conv_strides))
@@ -109,6 +110,7 @@ class QNetwork():
 			target_activation = tf.nn.relu(tf.nn.conv2d(target_input, target_weights, stride, 'VALID') + target_biases)
 
 			self.update_target.append(target_weights.assign(weights))
+			self.update_target.append(target_biases.assign(biases))
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
@@ -138,6 +140,7 @@ class QNetwork():
 			target_activation = tf.nn.relu(tf.matmul(target_input, target_weights) + target_biases)
 
 			self.update_target.append(target_weights.assign(weights))
+			self.update_target.append(target_biases.assign(biases))
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
@@ -167,6 +170,7 @@ class QNetwork():
 			target_activation = tf.matmul(target_input, target_weights) + target_biases
 
 			self.update_target.append(target_weights.assign(weights))
+			self.update_target.append(target_biases.assign(biases))
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
@@ -191,7 +195,7 @@ class QNetwork():
 
 			predictions = tf.reduce_sum(tf.mul(self.policy_q_layer, self.actions), 1)
 			optimality = tf.reduce_max(self.target_q_layer, 1)
-			targets = tf.stop_gradient(self.rewards + (self.discount_factor * optimality))
+			targets = tf.stop_gradient(self.rewards + (self.discount_factor * optimality * self.terminals))
 
 			'''
 			# Double Q-Learning:
@@ -214,7 +218,7 @@ class QNetwork():
 			return tf.reduce_sum(errors)  # add option for reduce mean?
 
 
-	def train(self, o1, a, r, o2):
+	def train(self, o1, a, r, o2, t):
 		''' train network on batch of experiences
 
 		Args:
@@ -225,7 +229,7 @@ class QNetwork():
 		'''
 
 		return self.sess.run([self.train_op, self.loss], 
-			feed_dict={self.observation:o1, self.actions:a, self.rewards:r, self.next_observation:o2})[1]
+			feed_dict={self.observation:o1, self.actions:a, self.rewards:r, self.next_observation:o2, self.terminals:t})[1]
 
 
 	def update_target_network(self):

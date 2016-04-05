@@ -69,7 +69,7 @@ class AtariEmulator:
 		for _ in range(self.buffer_length - 1):
 			self.ale.act(self.action_set[0])
 			self.get_screen()
-
+		# get initial_states
 		state = [(self.preprocess(), 0, 0, False)]
 		for step in range(self.history_length - 1):
 			state.append(self.run_step(0))
@@ -91,8 +91,9 @@ class AtariEmulator:
 			raw_reward += self.ale.act(self.action_set[action])
 			self.get_screen()
 
-		if self.reward_processing == "clip:":
-			reward = np.clip(reward, -1, 1)
+		reward = None
+		if self.reward_processing == 'clip':
+			reward = np.clip(raw_reward, -1, 1)
 		else:
 			reward = raw_reward
 
@@ -111,7 +112,7 @@ class AtariEmulator:
 		if self.blend_method == "max":
 			img = np.amax(self.buffer, axis=0)
 
-		return cv2.resize(img, self.screen_dims, interpolation=cv2.INTER_LINEAR)
+		return cv2.resize(img, self.screen_dims, interpolation=cv2.INTER_LINEAR) / 255.0
 
 	def isTerminal(self):
 		return (self.isGameOver() or (self.lives > self.ale.lives()))

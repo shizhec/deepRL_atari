@@ -61,9 +61,7 @@ class ExperienceMemory:
 		count = 0
 
 		for index in indices:
-
 			frame_slice = np.arange(index - self.history_length + 1, (index + 1))
-			# frame_slice[-1] = frame_slice[-1] % self.capacity  #<- remove this line?  index should never be equal to capacity
 			state[count] = np.transpose(np.take(self.observations, frame_slice, axis=0), [1,2,0])
 			count += 1
 		return state
@@ -100,4 +98,5 @@ class ExperienceMemory:
 		a = np.eye(self.num_actions)[self.actions[samples]] # convert actions to one-hot matrix
 		r = self.rewards[samples]
 		o2 = self.get_state(samples)
-		return [o1, a, r, o2]
+		t = np.invert(self.terminals[samples]).astype(int)  # invert and convert to 0's and 1's to cancel out next Q-value when there is a terminal transition
+		return [o1, a, r, o2, t]

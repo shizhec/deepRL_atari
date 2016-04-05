@@ -1,0 +1,4 @@
+model_checkpoint_path: "real_test.ckpt-3"
+all_model_checkpoint_paths: "real_test.ckpt-1"
+all_model_checkpoint_paths: "real_test.ckpt-2"
+all_model_checkpoint_paths: "real_test.ckpt-3"

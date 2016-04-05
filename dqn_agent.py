@@ -63,6 +63,8 @@ class DQNAgent():
 			self.memory.add(state, action, reward, terminal)
 			self.checkGameOver()
 			self.total_steps += 1
+			if (self.total_steps % self.recording_frequency == 0) and (not self.total_steps == self.random_exploration_length):
+				self.train_stats.record(self.total_steps)
 
 
 	def act(self, obs, exploration_rate):
@@ -81,7 +83,7 @@ class DQNAgent():
 
 			if self.total_steps % self.training_frequency == 0:
 				batch = self.memory.get_batch()
-				loss = self.network.train(batch[0], batch[1], batch[2], batch[3])
+				loss = self.network.train(batch[0], batch[1], batch[2], batch[3], batch[4])
 				self.train_stats.add_loss(loss)
 
 			if self.total_steps % self.target_update_frequency == 0:

@@ -1,0 +1,6 @@
+model_checkpoint_path: "graves_test.ckpt-5"
+all_model_checkpoint_paths: "graves_test.ckpt-1"
+all_model_checkpoint_paths: "graves_test.ckpt-2"
+all_model_checkpoint_paths: "graves_test.ckpt-3"
+all_model_checkpoint_paths: "graves_test.ckpt-4"
+all_model_checkpoint_paths: "graves_test.ckpt-5"

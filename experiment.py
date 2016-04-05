@@ -13,7 +13,7 @@ def evaluate_agent(args, agent, test_emulator, test_stats):
 			action = agent.test_step(screen)
 			results = test_emulator.run_step(action)
 			screen = results[0]
-			reward += results[2]
+			reward += results[4]
 			if not (test_stats is None):
 				test_stats.add_reward(results[4])
 			step +=1
