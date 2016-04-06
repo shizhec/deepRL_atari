@@ -75,7 +75,7 @@ class ParallelDQNAgent():
 
 		for step in range(steps):
 			batch = self.memory.get_batch()
-			loss = self.network.train(batch[0], batch[1], batch[2], batch[3])
+			loss = self.network.train(batch[0], batch[1], batch[2], batch[3], batch[4])
 			self.train_stats.add_loss(loss)
 			self.train_steps += 1
 			if self.total_steps < self.final_exploration_frame:

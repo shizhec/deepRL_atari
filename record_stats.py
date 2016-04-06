@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import time
 
 class RecordStats:
 
@@ -13,16 +14,27 @@ class RecordStats:
 		self.games = 0
 		self.q_values = 0.0
 		self.q_count = 0
+		self.current_score = 0
+		self.max_score = 0
+		self.min_score = 1000000000
+		self.recording_frequency = args.recording_frequency
 
 
 		with tf.device('/cpu:0'):
 			self.spg = tf.placeholder(tf.float32, shape=[], name="score_per_game")
 			self.mean_q = tf.placeholder(tf.float32, shape=[])
 			self.total_gp = tf.placeholder(tf.float32, shape=[])
+			self.max_r = tf.placeholder(tf.float32, shape=[])
+			self.min_r = tf.placeholder(tf.float32, shape=[])
+			self.time = tf.placeholder(tf.float32, shape=[])
 
 			self.spg_summ = tf.scalar_summary('score_per_game', self.spg)
 			self.q_summ = tf.scalar_summary('q_values', self.mean_q)
 			self.gp_summ = tf.scalar_summary('steps_per_game', self.total_gp)
+			self.max_summ = tf.scalar_summary('maximum_score', self.max_score)
+			self.min_summ = tf.scalar_summary('minimum_score', self.min_score)
+			self.time_summ = tf.scalar_summary('steps_per_second', self.min_score)
+
 
 			if not test:
 				self.mean_l = tf.placeholder(tf.float32, shape=[], name='loss')
@@ -36,8 +48,17 @@ class RecordStats:
 			# self.summary_op = tf.merge_all_summaries()
 			self.sess = tf.Session()
 			self.summary_writer = tf.train.SummaryWriter(self.path)
+			self.start_time = time.time()
 
 	def record(self, epoch):
+		
+		time = time.time() - self.start_time
+		step_per_sec = None
+		if test:
+			step_per_sec = self.step_count / time
+		else:
+			step_per_sec = self.recording_frequency / time
+
 		avg_loss = 0
 		if self.loss_count != 0:
 			avg_loss = self.loss / self.loss_count
@@ -60,11 +81,13 @@ class RecordStats:
 
 		if not self.test:
 			summary_str = self.sess.run(self.summary_op, 
-				feed_dict={self.spg:score_per_game, self.mean_l:avg_loss, self.mean_q:mean_q_values, self.total_gp:steps_per_game})
+				feed_dict={self.spg:score_per_game, self.mean_l:avg_loss, self.mean_q:mean_q_values, 
+				self.total_gp:steps_per_game, self.max_r:self.max_score, self.min_r:self.min_score, self.time:step_per_sec})
 			self.summary_writer.add_summary(summary_str, global_step=epoch)
 		else:
 			summary_str = self.sess.run(self.summary_op, 
-				feed_dict={self.spg:score_per_game, self.mean_q:mean_q_values, self.total_gp:steps_per_game})
+				feed_dict={self.spg:score_per_game, self.mean_q:mean_q_values, self.total_gp:steps_per_game, 
+				self.max_r:self.max_score, self.min_r:self.min_score, self.time:step_per_sec})
 			self.summary_writer.add_summary(summary_str, global_step=epoch)
 
 		self.reward = 0
@@ -74,10 +97,16 @@ class RecordStats:
 		self.games = 0
 		self.q_values = 0
 		self.q_count = 0
+		self.max_score = 0
+		self.min_score = 1000000000
+		if test:
+			current_score = 0
+		self.start_time = time.time()
 
 
 	def add_reward(self, r):
 		self.reward += r
+		self.current_score += r
 		self.step_count += 1
 
 	def add_loss(self, l):
@@ -86,6 +115,13 @@ class RecordStats:
 
 	def add_game(self):
 		self.games += 1
+
+		if self.current_score > self.max_score:
+			max_score = current_score
+		if self.current_score < self.min_score:
+			min_score = current_score
+
+		self.current_score = 0
 
 	def add_q_values(self, q_vals):
 		mean_q = np.mean(q_vals)

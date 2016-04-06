@@ -63,10 +63,10 @@ def main():
 	# must set to custom in order to specify custom architecture
 	parser.add_argument("--network_architecture", type=str, help="name of prespecified network architecture", 
 		choices=("deepmind_nips", "deepmind_nature, custom"), default="deepmind_nature")
-	parser.add_argument("--recording_frequency", type=int, help="number of steps before tensorboard recording", default=20000)
+	parser.add_argument("--recording_frequency", type=int, help="number of steps before tensorboard recording", default=50000)
 
 	parser.add_argument("--parallel", help="parallelize acting and learning", action='store_true')
-	# parser.add_argument("--double_dqn", help="use double q-learning algorithm in error target calculation", action=store_true)
+	parser.add_argument("--double_dqn", help="use double q-learning algorithm in error target calculation", action='store_true')
 	args = parser.parse_args()
 
 

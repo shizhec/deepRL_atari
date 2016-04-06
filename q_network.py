@@ -16,6 +16,8 @@ class QNetwork():
 		self.rewards = tf.placeholder(tf.float32, shape=[None], name="rewards")
 		self.next_observation = tf.placeholder(tf.float32, shape=[None, args.screen_dims[0], args.screen_dims[1], args.history_length], name="next_observation")
 		self.terminals = tf.placeholder(tf.float32, shape=[None], name="terminals")
+		# self.normalized_observation = self.observation / 255.0
+		# self.normalized_next_observation = self.next_observation / 255.0
 
 		num_conv_layers = len(args.conv_kernel_shapes)
 		assert(num_conv_layers == len(args.conv_strides))
@@ -65,9 +67,8 @@ class QNetwork():
 		self.policy_q_layer = last_layers[0]
 		self.target_q_layer = last_layers[1]
 
-		self.loss = self.build_loss(args.error_clipping, num_actions)
+		self.loss = self.build_loss(args.error_clipping, num_actions, args.double_dqn)
 
-		self.train_op = None  # add options for more optimizers
 		if args.optimizer == 'rmsprop':
 			self.train_op = tf.train.RMSPropOptimizer(
 				args.learning_rate, decay=args.rmsprop_decay, momentum=0.0, epsilon=args.rmsprop_epsilon).minimize(self.loss)
@@ -91,8 +92,8 @@ class QNetwork():
 		''' Build a convolutional layer
 
 		Args:
-			input_layer: input to convolutional layer - must be 3d
-			target_input: input to layer of target network - must also be 3d
+			input_layer: input to convolutional layer - must be 4d
+			target_input: input to layer of target network - must also be 4d
 			kernel_shape: tuple for filter shape: (filter_height, filter_width, in_channels, out_channels)
 			stride: tuple for stride: (1, vert_stride. horiz_stride, 1)
 		'''
@@ -100,6 +101,7 @@ class QNetwork():
 		with tf.variable_scope(name):
 
 			weights = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.01), name=(name + "_weights"))
+			# weights = self.get_weight(shape, tf.reduce_prod(tf.shape(policy_input)[1:])), name + "_weights")
 			biases = tf.Variable(tf.fill([kernel_shape[-1]], 0.1), name=(name + "_biases"))
 
 			activation = tf.nn.relu(tf.nn.conv2d(policy_input, weights, stride, 'VALID') + biases)
@@ -130,6 +132,7 @@ class QNetwork():
 		with tf.variable_scope(name):
 
 			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
+			# weights = self.get_weight(shape, tf.reduce_prod(tf.shape(policy_input)[1:])), name + "_weights")
 			biases = tf.Variable(tf.fill([shape[-1]], 0.1), name=(name + "_biases"))
 
 			activation = tf.nn.relu(tf.matmul(policy_input, weights) + biases)
@@ -160,6 +163,7 @@ class QNetwork():
 		with tf.variable_scope(name):
 
 			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
+			# weights = self.get_weight(shape, tf.reduce_prod(tf.shape(policy_input)[1:])), name + "_weights")
 			biases = tf.Variable(tf.fill([shape[-1]], 0.1), name=(name + "_biases"))
 
 			activation = tf.matmul(policy_input, weights) + biases
@@ -189,22 +193,22 @@ class QNetwork():
 		return self.sess.run(self.policy_q_layer, feed_dict={self.observation:obs})
 
 
-	def build_loss(self, error_clip, num_actions):
+	def build_loss(self, error_clip, num_actions, double_dqn):
 		''' build loss graph '''
 		with tf.name_scope("loss"):
 
 			predictions = tf.reduce_sum(tf.mul(self.policy_q_layer, self.actions), 1)
-			optimality = tf.reduce_max(self.target_q_layer, 1)
-			targets = tf.stop_gradient(self.rewards + (self.discount_factor * optimality * self.terminals))
+			
+			max_action_values = None
+			if double_dqn: # Double Q-Learning:
+				max_actions = tf.to_int32(tf.argmax(self.policy_q_layer, 1))
+				# tf.gather doesn't support multidimensional indexing yet, so we flatten output activations for indexing
+				indices = tf.range(0, tf.size(max_actions) * num_actions, num_actions) + max_actions
+				max_action_values = tf.gather(tf.reshape(self.target_q_layer, shape=[-1]), indices)
+			else:
+				max_action_values = tf.reduce_max(self.target_q_layer, 1)
 
-			'''
-			# Double Q-Learning:
-			max_actions = tf.to_int32(tf.argmax(self.policy_q_layer, 1))
-			# tf.gather doesn't support multidimensional indexing yet, so we flatten output activations for indexing
-			indices = tf.range(0, tf.size(max_actions) * num_actions, num_actions) + max_actions
-			max_action_values = tf.gather(tf.reshape(self.target_q_layer, shape=[-1]), indices)
-			targets = tf.stop_gradient(self.rewards + (self.discount_factor * max_action_values))
-			'''
+			targets = tf.stop_gradient(self.rewards + (self.discount_factor * max_action_values * self.terminals))
 
 			difference = tf.abs(predictions - targets)
 
@@ -281,4 +285,12 @@ class QNetwork():
 			train = opt.apply_gradients(zip(rms_updates, params))
 			'''
 
-			return tf.group(train, *avg_grad_updates)
+			return tf.group(train, tf.group(*avg_grad_updates))
+
+	def get_weights(self, shape, fan_in, name):
+		std = 1 / tf.sqrt(fan_in)
+		return tf.Variable(tf.random_uniform(shape, minval=(-1 * std), maxval=std), name=name)
+
+	def get_biases(self, shape, fan_in, name):
+		std = 1 / tf.sqrt(fan_in)
+		return tf.Variable(tf.fill(shape, std), name=name)

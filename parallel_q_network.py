@@ -15,6 +15,7 @@ class ParallelQNetwork():
 		self.actions = tf.placeholder(tf.float32, shape=[None, num_actions], name="actions") # one-hot matrix because tf.gather() doesn't support multidimensional indexing yet
 		self.rewards = tf.placeholder(tf.float32, shape=[None], name="rewards")
 		self.next_observation = tf.placeholder(tf.float32, shape=[None, args.screen_dims[0], args.screen_dims[1], args.history_length], name="next_observation")
+		self.terminals = tf.placeholder(tf.float32, shape=[None], name="terminals")
 
 		num_conv_layers = len(args.conv_kernel_shapes)
 		assert(num_conv_layers == len(args.conv_strides))
@@ -126,6 +127,7 @@ class ParallelQNetwork():
 				target_activation = tf.nn.relu(tf.nn.conv2d(target_input, target_weights, stride, 'VALID') + target_biases)
 
 				self.update_target.append(target_weights.assign(weights))
+				self.update_target.append(target_biases.assign(biases))
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
@@ -163,6 +165,7 @@ class ParallelQNetwork():
 				target_activation = tf.nn.relu(tf.matmul(target_input, target_weights) + target_biases)
 
 				self.update_target.append(target_weights.assign(weights))
+				self.update_target.append(target_biases.assign(biases))
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
@@ -200,6 +203,7 @@ class ParallelQNetwork():
 				target_activation = tf.matmul(target_input, target_weights) + target_biases
 
 				self.update_target.append(target_weights.assign(weights))
+				self.update_target.append(target_biases.assign(biases))
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
@@ -223,18 +227,19 @@ class ParallelQNetwork():
 		with tf.name_scope("loss"):
 
 			predictions = tf.reduce_sum(tf.mul(self.gpu_q_layer, self.actions), 1)
-			optimality = tf.reduce_max(self.target_q_layer, 1)
-			targets = tf.stop_gradient(self.rewards + (self.discount_factor * optimality))
-			difference = tf.abs(predictions - targets)
+			
+			max_action_values = None
+			if double_dqn: # Double Q-Learning:
+				max_actions = tf.to_int32(tf.argmax(self.gpu_q_layer, 1))
+				# tf.gather doesn't support multidimensional indexing yet, so we flatten output activations for indexing
+				indices = tf.range(0, tf.size(max_actions) * num_actions, num_actions) + max_actions
+				max_action_values = tf.gather(tf.reshape(self.target_q_layer, shape=[-1]), indices)
+			else:
+				max_action_values = tf.reduce_max(self.target_q_layer, 1)
 
-			'''
-			Double Q-Learning:
-			max_actions = tf.argmax(self.gpu_q_layer, 1)
-			# tf.gather doesn't support multidimensional indexing yet, so we flatten output activations for indexing
-			indices = tf.range(0, tf.size(max_actions), num_actions) + max_actions
-			max_action_values = tf.gather(tf.reshape(self.target_q_layer, shape=[-1]), indices)
-			targets = tf.stop_gradient(self.rewards + (self.discount_factor * max_action_values))
-			'''
+			targets = tf.stop_gradient(self.rewards + (self.discount_factor * max_action_values * self.terminals))
+
+			difference = tf.abs(predictions - targets)
 
 			if error_clip >= 0:
 				quadratic_part = tf.clip_by_value(difference, 0.0, error_clip)
@@ -246,7 +251,7 @@ class ParallelQNetwork():
 			return tf.reduce_sum(errors)  # add option for reduce mean?
 
 
-	def train(self, o1, a, r, o2):
+	def train(self, o1, a, r, o2, t):
 		''' train network on batch of experiences
 
 		Args:
@@ -257,7 +262,7 @@ class ParallelQNetwork():
 		'''
 
 		return self.sess.run([self.train_op, self.loss], 
-			feed_dict={self.observation:o1, self.actions:a, self.rewards:r, self.next_observation:o2})[1]
+			feed_dict={self.observation:o1, self.actions:a, self.rewards:r, self.next_observation:o2, self.terminals:t})[1]
 
 
 	def update_target_network(self):
@@ -282,19 +287,20 @@ class ParallelQNetwork():
 
 			square_grads = [tf.square(grad) for grad in grads]
 
-			avg_grads = [tf.Variable(tf.ones(tf.shape(grad))) for grad in grads]
-			avg_square_grads = [tf.Variable(tf.ones(tf.shape(grad))) for grad in grads]
+			avg_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
+			avg_square_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
 
-			update_avg_grads = [grad_pair[0].assign((rms_decay * grad_pair[0]) + ((1 - rms_decay) * grad_pair[1])) 
+			update_avg_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * grad_pair[1])) 
 				for grad_pair in zip(avg_grads, grads)]
-			update_avg_square_grads = [grad_pair[0].assign((rms_decay * grad_pair[0]) + ((1 - rms_decay) * tf.square(grad_pair[1]))) 
+			update_avg_square_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * tf.square(grad_pair[1]))) 
 				for grad_pair in zip(avg_square_grads, grads)]
+			avg_grad_updates = update_avg_grads + update_avg_square_grads
 
 			rms = [tf.abs(tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)) 
 				for avg_grad_pair in zip(avg_grads, avg_square_grads)]
 
 			rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
-			train = opt.apply_gradients(zip(rms_updates, params))
+			train = optimizer.apply_gradients(zip(rms_updates, params))
 
 
 			'''
@@ -308,4 +314,4 @@ class ParallelQNetwork():
 			train = opt.apply_gradients(zip(rms_updates, params))
 			'''
 
-			return tf.group(update_avg_grads, update_avg_square_grads, train)
+			return tf.group(train, tf.group(*avg_grad_updates))

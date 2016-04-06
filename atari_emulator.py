@@ -112,7 +112,7 @@ class AtariEmulator:
 		if self.blend_method == "max":
 			img = np.amax(self.buffer, axis=0)
 
-		return cv2.resize(img, self.screen_dims, interpolation=cv2.INTER_LINEAR) / 255.0
+		return cv2.resize(img, self.screen_dims, interpolation=cv2.INTER_LINEAR)
 
 	def isTerminal(self):
 		return (self.isGameOver() or (self.lives > self.ale.lives()))
