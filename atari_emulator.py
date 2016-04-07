@@ -30,6 +30,8 @@ class AtariEmulator:
 		if args.watch:
 			self.ale.setBool(b'sound', True)
 			self.ale.setBool(b'display_screen', True)
+		if args.record:
+			self.ale.setString(b'record_screen_dir', str.encode('videos/' + args.game + '/' + args.name))
 		self.ale.loadROM(str.encode(args.rom_path + '/' + args.game + '.bin'))
 
 		self.buffer = np.empty((self.buffer_length, 210, 160))

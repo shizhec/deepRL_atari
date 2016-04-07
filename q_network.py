@@ -1,4 +1,5 @@
 import tensorflow as tf
+import math
 
 
 class QNetwork():
@@ -16,8 +17,8 @@ class QNetwork():
 		self.rewards = tf.placeholder(tf.float32, shape=[None], name="rewards")
 		self.next_observation = tf.placeholder(tf.float32, shape=[None, args.screen_dims[0], args.screen_dims[1], args.history_length], name="next_observation")
 		self.terminals = tf.placeholder(tf.float32, shape=[None], name="terminals")
-		# self.normalized_observation = self.observation / 255.0
-		# self.normalized_next_observation = self.next_observation / 255.0
+		self.normalized_observation = self.observation / 2.55
+		self.normalized_next_observation = self.next_observation / 2.55
 
 		num_conv_layers = len(args.conv_kernel_shapes)
 		assert(num_conv_layers == len(args.conv_strides))
@@ -33,8 +34,8 @@ class QNetwork():
 			policy_input = None
 			target_input = None
 			if layer == 0:
-				policy_input = self.observation
-				target_input = self.next_observation
+				policy_input = self.normalized_observation
+				target_input = self.normalized_next_observation
 			else:
 				policy_input = last_policy_layer
 				target_input = last_target_layer
@@ -77,8 +78,11 @@ class QNetwork():
 
 		self.saver = tf.train.Saver(self.policy_network_params)
 
+		# param_summs = [tf.histogram_summary("name", param) for param in self.policy_network_params] # TODO: add actual names and record from agent
+		# self.param_summary = tf.merge_all_summaries()
+
 		# start tf session
-		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333333)  # avoid using all vram for GTX 970
+		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)  # avoid using all vram for GTX 970
 		self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 		if args.watch:
@@ -86,6 +90,8 @@ class QNetwork():
 			self.saver.restore(self.sess, load_path)		
 		else:
 			self.sess.run(tf.initialize_all_variables())
+
+		# self.summary_writer = tf.train.SummaryWriter('records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph_def)
 
 
 	def conv_relu(self, policy_input, target_input, kernel_shape, stride, layer_num):
@@ -100,9 +106,11 @@ class QNetwork():
 		name = 'conv' + str(layer_num + 1)
 		with tf.variable_scope(name):
 
+			# fan_in = tf.reduce_prod(tf.slice(policy_input.get_shape(), [1], [-1]))
 			weights = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.01), name=(name + "_weights"))
-			# weights = self.get_weight(shape, tf.reduce_prod(tf.shape(policy_input)[1:])), name + "_weights")
+			# weights = self.get_weights(kernel_shape, fan_in, name + "_weights")
 			biases = tf.Variable(tf.fill([kernel_shape[-1]], 0.1), name=(name + "_biases"))
+			# biases = self.get_biases([kernel_shape[-1]], fan_in, name + "_biases")
 
 			activation = tf.nn.relu(tf.nn.conv2d(policy_input, weights, stride, 'VALID') + biases)
 
@@ -131,9 +139,11 @@ class QNetwork():
 		name = 'dense' + str(layer_num + 1)
 		with tf.variable_scope(name):
 
+			# fan_in = tf.reduce_prod(tf.slice(policy_input.get_shape(), [1], [-1]))
 			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
-			# weights = self.get_weight(shape, tf.reduce_prod(tf.shape(policy_input)[1:])), name + "_weights")
+			# weights = self.get_weights(shape, fan_in, name + "_weights")
 			biases = tf.Variable(tf.fill([shape[-1]], 0.1), name=(name + "_biases"))
+			# biases = self.get_biases([shape[-1]], fan_in, name + "_biases")
 
 			activation = tf.nn.relu(tf.matmul(policy_input, weights) + biases)
 
@@ -162,9 +172,12 @@ class QNetwork():
 		name = 'q_layer'
 		with tf.variable_scope(name):
 
+			# fan_in = tf.reduce_prod(tf.slice(policy_input.get_shape(), [1], [-1]))
 			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
-			# weights = self.get_weight(shape, tf.reduce_prod(tf.shape(policy_input)[1:])), name + "_weights")
+			# weights = self.get_weights(shape, fan_in, name + "_weights")
 			biases = tf.Variable(tf.fill([shape[-1]], 0.1), name=(name + "_biases"))
+			# biases = self.get_biases([shape[-1]], fan_in, name + "_biases")
+
 
 			activation = tf.matmul(policy_input, weights) + biases
 
@@ -242,6 +255,7 @@ class QNetwork():
 		self.sess.run(self.update_target)
 
 
+
 	def save_model(self, epoch):
 
 		self.saver.save(self.sess, self.path + '/' + self.name + '.ckpt', global_step=epoch)
@@ -267,7 +281,7 @@ class QNetwork():
 				for grad_pair in zip(avg_square_grads, grads)]
 			avg_grad_updates = update_avg_grads + update_avg_square_grads
 
-			rms = [tf.abs(tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)) 
+			rms = [tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)
 				for avg_grad_pair in zip(avg_grads, avg_square_grads)]
 
 			rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
@@ -288,9 +302,13 @@ class QNetwork():
 			return tf.group(train, tf.group(*avg_grad_updates))
 
 	def get_weights(self, shape, fan_in, name):
-		std = 1 / tf.sqrt(fan_in)
-		return tf.Variable(tf.random_uniform(shape, minval=(-1 * std), maxval=std), name=name)
+		std = 1 / tf.sqrt(tf.to_float(fan_in))
+		return tf.Variable(tf.random_uniform(shape, minval=(0 - std), maxval=std), name=name)
 
 	def get_biases(self, shape, fan_in, name):
-		std = 1 / tf.sqrt(fan_in)
+		std = 1 / tf.sqrt(tf.to_float(fan_in))
 		return tf.Variable(tf.fill(shape, std), name=name)
+
+	def record_params(self, step):
+		summary_string = self.sess.run(self.param_summaries)
+		self.summary_writer.add_summary(summary_string, step)

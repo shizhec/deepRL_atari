@@ -1,0 +1,3 @@
+model_checkpoint_path: "graves_test_partial_norm.ckpt-2"
+all_model_checkpoint_paths: "graves_test_partial_norm.ckpt-1"
+all_model_checkpoint_paths: "graves_test_partial_norm.ckpt-2"

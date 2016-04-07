@@ -19,6 +19,10 @@ def main():
 	parser.add_argument("--watch",
 		help="if true, a pretrained model with the specified name is loaded and tested with the game screen displayed", 
 		action='store_true')
+	# currently watch must also be true to record
+	parser.add_argument("--record",
+		help="if true, a pretrained model with the specified name is loaded and tested with the game screens saved", 
+		action='store_true')
 
 	parser.add_argument("--epochs", type=int, help="number of epochs", default=200)
 	parser.add_argument("--epoch_length", type=int, help="number of steps in an epoch", default=250000)
@@ -109,9 +113,8 @@ def main():
 		experiment.run_experiment(args, agent, testing_emulator, test_stats)
 
 	else:
-		training_emulator = AtariEmulator(args)
 		testing_emulator = AtariEmulator(args)
-		num_actions = len(training_emulator.get_possible_actions())
+		num_actions = len(testing_emulator.get_possible_actions())
 		q_network = QNetwork(args, num_actions)
 		agent = DQNAgent(args, q_network, None, None, num_actions, None, None)
 		experiment.evaluate_agent(args, agent, testing_emulator, None)
