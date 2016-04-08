@@ -92,10 +92,10 @@ class DQNAgent():
 			if self.total_steps < self.final_exploration_frame:
 				self.exploration_rate -= (self.exploration_rate - self.final_exploration_rate) / (self.final_exploration_frame - self.total_steps)
 
+			self.total_steps += 1
+
 			if self.total_steps % self.recording_frequency == 0:
 				self.train_stats.record(self.total_steps)
-
-			self.total_steps += 1
 
 		# self.train_stats.record(self.total_steps)
 		self.network.save_model(epoch)

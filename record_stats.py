@@ -57,12 +57,12 @@ class RecordStats:
 		avg_loss = 0
 		if self.loss_count != 0:
 			avg_loss = self.loss / self.loss_count
-		print("average loss: {0}".format(avg_loss))
+		# print("average loss: {0}".format(avg_loss))
 
 		mean_q_values = 0
 		if self.q_count > 0:
 			mean_q_values = self.q_values / self.q_count
-		print("average q_values: {0}".format(mean_q_values))
+		# print("average q_values: {0}".format(mean_q_values))
 
 		score_per_game = 0.0
 		steps_per_game = 0
@@ -99,12 +99,15 @@ class RecordStats:
 		self.q_count = 0
 		self.max_score = 0
 		self.min_score = 1000000000
-		self.start_time = time.time()
 
 
 	def add_reward(self, r):
 		self.reward += r
 		self.current_score += r
+
+		if self.step_count == 0:
+			self.start_time = time.time()
+
 		self.step_count += 1
 
 	def add_loss(self, l):

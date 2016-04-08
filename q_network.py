@@ -17,8 +17,8 @@ class QNetwork():
 		self.rewards = tf.placeholder(tf.float32, shape=[None], name="rewards")
 		self.next_observation = tf.placeholder(tf.float32, shape=[None, args.screen_dims[0], args.screen_dims[1], args.history_length], name="next_observation")
 		self.terminals = tf.placeholder(tf.float32, shape=[None], name="terminals")
-		self.normalized_observation = self.observation / 2.55
-		self.normalized_next_observation = self.next_observation / 2.55
+		self.normalized_observation = self.observation / 25.5
+		self.normalized_next_observation = self.next_observation / 25.5
 
 		num_conv_layers = len(args.conv_kernel_shapes)
 		assert(num_conv_layers == len(args.conv_strides))
