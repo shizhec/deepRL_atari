@@ -19,10 +19,12 @@ The code runs and learns, but I'm still testing and changing it.  It does very w
 From the top directory of the repo (dir with python files):
 ### Training
 `$ python3 ./run_dqn.py <name_of_game> <name_of_algorithm/method> <name_of_agent_instance>`
+For example:
+`$ python3 ./run_dqn.py breakout dqn brick_hunter`
 
 ####Watching
 `$ python3 ./run_dqn.py <name_of_game> <name_of_algorithm/method> <name_of_saved_model> --watch`
-Where \<name_of_saved_model\> is the \<name_of_agent_instance\> used during training.  If you used any non-default settings, make sure to use the same oneswhen watching as well.
+Where \<name_of_saved_model\> is the \<name_of_agent_instance\> used during training.  If you used any non-default settings, make sure to use the same ones when watching as well.
 
 ## Running Notes
 
@@ -31,7 +33,7 @@ To get a list of arguments:
 
 `$ python3 ./run_dqn.py --h`
 
-By default rom files are expected to be in a folder titled 'roms' in the parent directory of the repo.  You can pass a diferent directory as an argument or change the default in run_dqn.py.  ROM file names are expected to be snake case.
+By default rom files are expected to be in a folder titled 'roms' in the parent directory of the repo.  You can pass a diferent directory as an argument or change the default in run_dqn.py.
 
 Statistics and saved models are saved in the parent directory of the repo as well.
 
