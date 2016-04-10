@@ -39,4 +39,6 @@ By default rom files are expected to be in a folder titled 'roms' in the parent 
 
 Statistics and saved models are saved in the parent directory of the repo as well.
 
+A full training run takes between 3.5 and 4 days on my NVidia GTX 970.
+
 The parallel option hasn't been updated recently and does not currently work.
