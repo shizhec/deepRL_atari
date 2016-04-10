@@ -5,7 +5,7 @@ The code runs and learns, but I'm still testing and changing it.  It does very w
 
 ## Dependencies/Requirements
 
-1. An NVidia GPU with DDR5 memory to train in a reasonable amount of time
+1. An nVidia GPU with DDR5 memory to train in a reasonable amount of time
 2. [Python 3](https://www.python.org/)
 3. [The Arcade Learning Environment](https://github.com/mgbellemare/Arcade-Learning-Environment) for the emulator framework.
 4. [Tensorflow](https://www.tensorflow.org/) for gpu numerical computions and symbolic differentiation.
@@ -39,6 +39,6 @@ By default rom files are expected to be in a folder titled 'roms' in the parent 
 
 Statistics and saved models are saved in the parent directory of the repo as well.
 
-A full training run takes between 3.5 and 4 days on my NVidia GTX 970.
+A full training run takes between 3.5 and 4 days on my nVidia GTX 970.
 
 The parallel option hasn't been updated recently and does not currently work.
