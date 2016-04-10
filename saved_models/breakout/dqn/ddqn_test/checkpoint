@@ -1,6 +1,0 @@
-model_checkpoint_path: "ddqn_test.ckpt-31"
-all_model_checkpoint_paths: "ddqn_test.ckpt-27"
-all_model_checkpoint_paths: "ddqn_test.ckpt-28"
-all_model_checkpoint_paths: "ddqn_test.ckpt-29"
-all_model_checkpoint_paths: "ddqn_test.ckpt-30"
-all_model_checkpoint_paths: "ddqn_test.ckpt-31"

@@ -27,6 +27,7 @@ def main():
 	parser.add_argument("--epochs", type=int, help="number of epochs", default=200)
 	parser.add_argument("--epoch_length", type=int, help="number of steps in an epoch", default=250000)
 	parser.add_argument("--test_steps", type=int, help="max number of steps per test", default=125000)
+	parser.add_argument("--test_steps_hardcap", type=int, help="absolute max number of steps per test", default=135000)
 	parser.add_argument("--test_episodes", type=int, help="max number of episodes per test", default=30)
 	parser.add_argument("--history_length", type=int, help="number of frames in a state", default=4)
 	parser.add_argument("--training_frequency", type=int, help="number of steps run before training", default=4)

@@ -1,6 +1,0 @@
-model_checkpoint_path: "test_agent.ckpt-47"
-all_model_checkpoint_paths: "test_agent.ckpt-43"
-all_model_checkpoint_paths: "test_agent.ckpt-44"
-all_model_checkpoint_paths: "test_agent.ckpt-45"
-all_model_checkpoint_paths: "test_agent.ckpt-46"
-all_model_checkpoint_paths: "test_agent.ckpt-47"

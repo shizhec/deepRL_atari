@@ -1,5 +1,6 @@
 import tensorflow as tf
-import math
+import os
+import numpy as np
 
 
 class QNetwork():
@@ -7,8 +8,12 @@ class QNetwork():
 	def __init__(self, args, num_actions):
 		''' Build tensorflow graph for deep q network '''
 
+		print("Initializing Q-Network")
+
 		self.discount_factor = args.discount_factor
 		self.path = 'saved_models/' + args.game + '/' + args.agent_type + '/' + args.agent_name
+		if not os.path.exists(self.path):
+   			os.makedirs(self.path)
 		self.name = args.agent_name
 
 		# input placeholders
@@ -17,8 +22,8 @@ class QNetwork():
 		self.rewards = tf.placeholder(tf.float32, shape=[None], name="rewards")
 		self.next_observation = tf.placeholder(tf.float32, shape=[None, args.screen_dims[0], args.screen_dims[1], args.history_length], name="next_observation")
 		self.terminals = tf.placeholder(tf.float32, shape=[None], name="terminals")
-		self.normalized_observation = self.observation / 25.5
-		self.normalized_next_observation = self.next_observation / 25.5
+		self.normalized_observation = self.observation / 255.0
+		self.normalized_next_observation = self.next_observation / 255.0
 
 		num_conv_layers = len(args.conv_kernel_shapes)
 		assert(num_conv_layers == len(args.conv_strides))
@@ -82,14 +87,17 @@ class QNetwork():
 		# self.param_summary = tf.merge_all_summaries()
 
 		# start tf session
-		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)  # avoid using all vram for GTX 970
+		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.33333)  # avoid using all vram for GTX 970
 		self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 		if args.watch:
+			print("Loading Saved Network...")
 			load_path = tf.train.latest_checkpoint(self.path)
-			self.saver.restore(self.sess, load_path)		
+			self.saver.restore(self.sess, load_path)
+			print("Network Loaded")		
 		else:
 			self.sess.run(tf.initialize_all_variables())
+			print("Network Initialized")
 
 		# self.summary_writer = tf.train.SummaryWriter('records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph_def)
 
@@ -203,7 +211,7 @@ class QNetwork():
 			observation: the observation
 		'''
 
-		return self.sess.run(self.policy_q_layer, feed_dict={self.observation:obs})
+		return np.squeeze(self.sess.run(self.policy_q_layer, feed_dict={self.observation:obs}))
 
 
 	def build_loss(self, error_clip, num_actions, double_dqn):
@@ -281,8 +289,14 @@ class QNetwork():
 				for grad_pair in zip(avg_square_grads, grads)]
 			avg_grad_updates = update_avg_grads + update_avg_square_grads
 
-			rms = [tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)
+			# seperate operator for debugging
+			ms = [avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant
 				for avg_grad_pair in zip(avg_grads, avg_square_grads)]
+
+			not_bad = tf.greater(tf.reduce_min(tf.pack(ms)), 0)
+			tf.Assert(not_bad, tf.pack(ms), summarize=42)
+
+			rms = [tf.sqrt(ms_var) for ms_var in ms]
 
 			rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
 			train = optimizer.apply_gradients(zip(rms_updates, params))

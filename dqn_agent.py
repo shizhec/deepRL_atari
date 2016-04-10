@@ -41,6 +41,8 @@ class DQNAgent():
 			q_values = self.network.inference(obs)
 			if not (stats is None):
 				stats.add_q_values(q_values)
+			# if np.mean(q_values) > 20:
+					# print("q_values: {0}, step: {1}".format(loss, self.total_steps))
 			return np.argmax(q_values)
 		else:
 			return random.randrange(self.num_actions)
@@ -82,9 +84,11 @@ class DQNAgent():
 			self.checkGameOver()
 
 			if self.total_steps % self.training_frequency == 0:
-				batch = self.memory.get_batch()
-				loss = self.network.train(batch[0], batch[1], batch[2], batch[3], batch[4])
+				states, actions, rewards, next_states, terminals = self.memory.get_batch()
+				loss = self.network.train(states, actions, rewards, next_states, terminals)
 				self.train_stats.add_loss(loss)
+				# if loss > 10:
+					# print("loss: {0}, step: {1}".format(loss, self.total_steps))
 
 			if self.total_steps % self.target_update_frequency == 0:
 				self.network.update_target_network()
@@ -106,7 +110,15 @@ class DQNAgent():
 		if len(self.test_state) < self.history_length:
 			self.test_state.append(observation)
 
-		state = np.expand_dims(np.transpose(self.test_state, [1,2,0]), axis=0)
-		action = self.choose_action(state, self.test_exploration_rate, self.test_stats)
+		# choose action
+		q_values = None
+		action = None
+		if random.random() >= self.test_exploration_rate:
+			state = np.expand_dims(np.transpose(self.test_state, [1,2,0]), axis=0)
+			q_values = self.network.inference(state)
+			action = np.argmax(q_values)
+		else:
+			action = random.randrange(self.num_actions)
+
 		self.test_state.pop(0)
-		return action 
+		return [action, q_values]

@@ -1,4 +1,4 @@
-
+from visuals import Visuals
 
 def evaluate_agent(args, agent, test_emulator, test_stats):
 	step = 0
@@ -7,17 +7,31 @@ def evaluate_agent(args, agent, test_emulator, test_stats):
 	reset = test_emulator.reset()
 	agent.test_state = list(next(zip(*reset)))
 	screen = test_emulator.preprocess()
+	visuals = None
+	if args.watch:
+		visuals = Visuals(test_emulator.get_possible_actions())
 
 	while (step < args.test_steps) and (games < args.test_episodes):
-		while not test_emulator.isGameOver():
-			action = agent.test_step(screen)
+		while not test_emulator.isGameOver() and step < args.test_steps_hardcap:
+			action, q_values = agent.test_step(screen)
 			results = test_emulator.run_step(action)
 			screen = results[0]
 			reward += results[4]
+
+			# record stats
 			if not (test_stats is None):
 				test_stats.add_reward(results[4])
-			step +=1
+				if not (q_values is None):
+					test_stats.add_q_values(q_values)
+				# endif
+			#endif
 
+			# update visuals
+			if args.watch and (not (q_values is None)):
+				visuals.update(q_values)
+
+			step +=1
+		# endwhile
 		games += 1
 		if not (test_stats is None):
 			test_stats.add_game()

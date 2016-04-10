@@ -1,6 +1,0 @@
-model_checkpoint_path: "parallel_test.ckpt-52"
-all_model_checkpoint_paths: "parallel_test.ckpt-48"
-all_model_checkpoint_paths: "parallel_test.ckpt-49"
-all_model_checkpoint_paths: "parallel_test.ckpt-50"
-all_model_checkpoint_paths: "parallel_test.ckpt-51"
-all_model_checkpoint_paths: "parallel_test.ckpt-52"
