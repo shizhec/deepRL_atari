@@ -19,7 +19,9 @@ The code runs and learns, but I'm still testing and changing it.  It does very w
 From the top directory of the repo (dir with python files):
 ### Training
 `$ python3 ./run_dqn.py <name_of_game> <name_of_algorithm/method> <name_of_agent_instance>`
+
 For example:
+
 `$ python3 ./run_dqn.py breakout dqn brick_hunter`
 
 ####Watching
