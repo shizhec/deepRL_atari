@@ -11,7 +11,7 @@ class QNetwork():
 		print("Initializing Q-Network")
 
 		self.discount_factor = args.discount_factor
-		self.path = 'saved_models/' + args.game + '/' + args.agent_type + '/' + args.agent_name
+		self.path = '../saved_models/' + args.game + '/' + args.agent_type + '/' + args.agent_name
 		if not os.path.exists(self.path):
    			os.makedirs(self.path)
 		self.name = args.agent_name
@@ -33,6 +33,7 @@ class QNetwork():
 		last_target_layer = None
 		self.update_target = []
 		self.policy_network_params = []
+		self.param_names = []
 
 		# initialize convolutional layers
 		for layer in range(num_conv_layers):
@@ -83,8 +84,8 @@ class QNetwork():
 
 		self.saver = tf.train.Saver(self.policy_network_params)
 
-		# param_summs = [tf.histogram_summary("name", param) for param in self.policy_network_params] # TODO: add actual names and record from agent
-		# self.param_summary = tf.merge_all_summaries()
+		param_summs = [tf.histogram_summary(name, param) for name, param in zip(self.param_names, self.policy_network_params)]
+		self.param_summaries = tf.merge_all_summaries()
 
 		# start tf session
 		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.33333)  # avoid using all vram for GTX 970
@@ -99,7 +100,7 @@ class QNetwork():
 			self.sess.run(tf.initialize_all_variables())
 			print("Network Initialized")
 
-		# self.summary_writer = tf.train.SummaryWriter('records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph_def)
+		self.summary_writer = tf.train.SummaryWriter('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph_def)
 
 
 	def conv_relu(self, policy_input, target_input, kernel_shape, stride, layer_num):
@@ -132,6 +133,8 @@ class QNetwork():
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
+			self.param_names.append(name + "_weights")
+			self.param_names.append(name + "_biases")
 
 			return [activation, target_activation]
 
@@ -165,6 +168,8 @@ class QNetwork():
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
+			self.param_names.append(name + "_weights")
+			self.param_names.append(name + "_biases")
 
 			return [activation, target_activation]
 
@@ -199,6 +204,8 @@ class QNetwork():
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
+			self.param_names.append(name + "_weights")
+			self.param_names.append(name + "_biases")
 
 			return [activation, target_activation]
 
@@ -289,14 +296,20 @@ class QNetwork():
 				for grad_pair in zip(avg_square_grads, grads)]
 			avg_grad_updates = update_avg_grads + update_avg_square_grads
 
+			'''
 			# seperate operator for debugging
 			ms = [avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant
 				for avg_grad_pair in zip(avg_grads, avg_square_grads)]
 
-			not_bad = tf.greater(tf.reduce_min(tf.pack(ms)), 0)
-			tf.Assert(not_bad, tf.pack(ms), summarize=42)
+			# not_bad = tf.greater(tf.reduce_min(tf.pack(ms)), 0)
+			# tf.Assert(not_bad, tf.pack(ms), summarize=42)
 
 			rms = [tf.sqrt(ms_var) for ms_var in ms]
+			'''
+
+			rms = [tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)
+				for avg_grad_pair in zip(avg_grads, avg_square_grads)]
+
 
 			rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
 			train = optimizer.apply_gradients(zip(rms_updates, params))

@@ -62,3 +62,6 @@ def run_experiment(args, agent, test_emulator, test_stats):
 			steps = agent.total_steps
 
 		test_stats.record(steps)
+		if results >= args.saving_threshold:
+			agent.save_model(epoch)
+		

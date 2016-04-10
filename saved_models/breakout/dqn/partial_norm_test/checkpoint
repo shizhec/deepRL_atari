@@ -1,6 +1,0 @@
-model_checkpoint_path: "partial_norm_test.ckpt-14"
-all_model_checkpoint_paths: "partial_norm_test.ckpt-10"
-all_model_checkpoint_paths: "partial_norm_test.ckpt-11"
-all_model_checkpoint_paths: "partial_norm_test.ckpt-12"
-all_model_checkpoint_paths: "partial_norm_test.ckpt-13"
-all_model_checkpoint_paths: "partial_norm_test.ckpt-14"

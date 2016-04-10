@@ -15,13 +15,9 @@ def main():
 	parser.add_argument("game", type=str, help="name of game to play")
 	parser.add_argument("agent_type", type=str, help="name of learning/acting technique used")
 	parser.add_argument("agent_name", type=str, help="unique name of this agent instance")
-	parser.add_argument("--rom_path", type=str, help="path to directory containing atari game roms", default='roms')
+	parser.add_argument("--rom_path", type=str, help="path to directory containing atari game roms", default='../roms')
 	parser.add_argument("--watch",
 		help="if true, a pretrained model with the specified name is loaded and tested with the game screen displayed", 
-		action='store_true')
-	# currently watch must also be true to record
-	parser.add_argument("--record",
-		help="if true, a pretrained model with the specified name is loaded and tested with the game screens saved", 
 		action='store_true')
 
 	parser.add_argument("--epochs", type=int, help="number of epochs", default=200)
@@ -70,6 +66,8 @@ def main():
 		choices=("deepmind_nips", "deepmind_nature, custom"), default="deepmind_nature")
 	parser.add_argument("--recording_frequency", type=int, help="number of steps before tensorboard recording", default=50000)
 
+	parser.add_argument("--saving_threshold", type=int, help="min score threshold for saving model.", default=297)
+
 	parser.add_argument("--parallel", help="parallelize acting and learning", action='store_true')
 	parser.add_argument("--double_dqn", help="use double q-learning algorithm in error target calculation", action='store_true')
 	args = parser.parse_args()
@@ -106,10 +104,10 @@ def main():
 		agent = None
 		if args.parallel:
 			q_network = ParallelQNetwork(args, num_actions)
-			agent = ParallelDQNAgent(args, q_network, training_emulator, experience_memory, num_actions, train_stats, test_stats)
+			agent = ParallelDQNAgent(args, q_network, training_emulator, experience_memory, num_actions, train_stats)
 		else:
 			q_network = QNetwork(args, num_actions)
-			agent = DQNAgent(args, q_network, training_emulator, experience_memory, num_actions, train_stats, test_stats)
+			agent = DQNAgent(args, q_network, training_emulator, experience_memory, num_actions, train_stats)
 
 		experiment.run_experiment(args, agent, testing_emulator, test_stats)
 
@@ -117,7 +115,7 @@ def main():
 		testing_emulator = AtariEmulator(args)
 		num_actions = len(testing_emulator.get_possible_actions())
 		q_network = QNetwork(args, num_actions)
-		agent = DQNAgent(args, q_network, None, None, num_actions, None, None)
+		agent = DQNAgent(args, q_network, None, None, num_actions, None)
 		experiment.evaluate_agent(args, agent, testing_emulator, None)
 
 if __name__ == "__main__":

@@ -1,6 +1,0 @@
-model_checkpoint_path: "full_input_norm_test.ckpt-61"
-all_model_checkpoint_paths: "full_input_norm_test.ckpt-57"
-all_model_checkpoint_paths: "full_input_norm_test.ckpt-58"
-all_model_checkpoint_paths: "full_input_norm_test.ckpt-59"
-all_model_checkpoint_paths: "full_input_norm_test.ckpt-60"
-all_model_checkpoint_paths: "full_input_norm_test.ckpt-61"
