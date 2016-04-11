@@ -38,7 +38,7 @@ def main():
 	parser.add_argument("--screen_dims", type=tuple, help="dimensions to resize frames", default=(84,84))
 	# used for stochasticity and to help prevent overfitting.  
 	# Must be greater than frame_skip * (observation_length -1) + buffer_length - 1
-	parser.add_argument("--max_start_wait", type=int, help="max number of steps to wait for initial state", default=30)
+	parser.add_argument("--max_start_wait", type=int, help="max number of frames to wait for initial state", default=60)
 	# buffer_length = 1 prevents blending
 	parser.add_argument("--buffer_length", type=int, help="length of buffer to blend frames", default=2)
 	parser.add_argument("--blend_method", type=str, help="method used to blend frames", choices=('max'), default='max')
@@ -56,8 +56,10 @@ def main():
 		choices=('rmsprop', 'graves_rmsprop'), default='graves_rmsprop')
 	parser.add_argument("--rmsprop_decay", type=float, help="decay constant for moving average in rmsprop", default=0.95)
 	parser.add_argument("--rmsprop_epsilon", type=int, help="constant to stabilize rmsprop", default=0.01)
-	# set error_clipping to less than 0 to turn it off
+	# set error_clipping to less than 0 to disable
 	parser.add_argument("--error_clipping", type=str, help="constant at which td-error becomes linear instead of quadratic", default=1.0)
+	# set gradient clipping to 0 or less to disable.  Currently only works with graves_rmsprop.
+	parser.add_argument("--gradient_clip", type=str, help="clip gradients to have the provided L2-norm", default=0)
 	parser.add_argument("--target_update_frequency", type=int, help="number of steps between target network updates", default=10000)
 	parser.add_argument("--memory_capacity", type=int, help="max number of experiences to store in experience memory", default=1000000)
 	parser.add_argument("--batch_size", type=int, help="number of transitions sampled from memory during learning", default=32)

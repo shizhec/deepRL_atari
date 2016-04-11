@@ -8,8 +8,6 @@ class Visuals:
 
 	def __init__(self, actions):
 
-		print("initializing visuals")
-
 		all_action_names = ['no-op', 'fire', 'up', 'right', 'left', 'down', 'up_right', 'up_left', 'down-right', 'down-left', 
 			'up-fire', 'right-fire', 'left-fire', 'down-fire', 'up-right-fire', 'up-left-fire', 'down-right-fire', 'down-left-fire']
 

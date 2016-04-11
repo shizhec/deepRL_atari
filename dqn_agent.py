@@ -91,9 +91,6 @@ class DQNAgent():
 				self.train_stats.record(self.total_steps)
 				self.network.record_params(self.total_steps)
 
-		self.network.save_model(epoch)
-
-
 	def test_step(self, observation):
 
 		if len(self.test_state) < self.history_length:

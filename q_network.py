@@ -80,12 +80,13 @@ class QNetwork():
 			self.train_op = tf.train.RMSPropOptimizer(
 				args.learning_rate, decay=args.rmsprop_decay, momentum=0.0, epsilon=args.rmsprop_epsilon).minimize(self.loss)
 		elif args.optimizer == 'graves_rmsprop':
-			self.train_op = self.build_rmsprop_optimizer(args.learning_rate, args.rmsprop_decay, args.rmsprop_epsilon)
+			self.train_op = self.build_rmsprop_optimizer(args.learning_rate, args.rmsprop_decay, args.rmsprop_epsilon, args.gradient_clip)
 
 		self.saver = tf.train.Saver(self.policy_network_params)
 
-		param_summs = [tf.histogram_summary(name, param) for name, param in zip(self.param_names, self.policy_network_params)]
-		self.param_summaries = tf.merge_all_summaries()
+		if not args.watch:
+			param_hists = [tf.histogram_summary(name, param) for name, param in zip(self.param_names, self.policy_network_params)]
+			self.param_summaries = tf.merge_summary(param_hists)
 
 		# start tf session
 		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.33333)  # avoid using all vram for GTX 970
@@ -99,8 +100,7 @@ class QNetwork():
 		else:
 			self.sess.run(tf.initialize_all_variables())
 			print("Network Initialized")
-
-		self.summary_writer = tf.train.SummaryWriter('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph_def)
+			self.summary_writer = tf.train.SummaryWriter('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph_def)
 
 
 	def conv_relu(self, policy_input, target_input, kernel_shape, stride, layer_num):
@@ -276,7 +276,7 @@ class QNetwork():
 		self.saver.save(self.sess, self.path + '/' + self.name + '.ckpt', global_step=epoch)
 
 
-	def build_rmsprop_optimizer(self, learning_rate, rmsprop_decay, rmsprop_constant):
+	def build_rmsprop_optimizer(self, learning_rate, rmsprop_decay, rmsprop_constant, gradient_clip):
 
 		with tf.name_scope('rmsprop'):
 			optimizer = tf.train.GradientDescentOptimizer(learning_rate)
@@ -285,6 +285,9 @@ class QNetwork():
 			grads = [gv[0] for gv in grads_and_vars]
 			params = [gv[1] for gv in grads_and_vars]
 
+			if gradient_clip > 0:
+				grads = tf.tf.clip_by_global_norm(grad, gradient_clipping)
+			
 			square_grads = [tf.square(grad) for grad in grads]
 
 			avg_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
