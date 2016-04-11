@@ -34,8 +34,6 @@ class DQNAgent():
 			state = self.memory.get_current_state()
 			q_values = self.network.inference(state)
 			self.train_stats.add_q_values(q_values)
-			if np.mean(q_values) > 200:
-					print("q_values: {0}, step: {1}".format(loss, self.total_steps))
 			return np.argmax(q_values)
 		else:
 			return random.randrange(self.num_actions)
@@ -76,16 +74,14 @@ class DQNAgent():
 				states, actions, rewards, next_states, terminals = self.memory.get_batch()
 				loss = self.network.train(states, actions, rewards, next_states, terminals)
 				self.train_stats.add_loss(loss)
-				if loss > 50:
-					print("loss: {0}, step: {1}".format(loss, self.total_steps))
+
+			self.total_steps += 1
 
 			if self.total_steps % self.target_update_frequency == 0:
 				self.network.update_target_network()
 
 			if self.total_steps < self.final_exploration_frame:
 				self.exploration_rate -= (self.exploration_rate - self.final_exploration_rate) / (self.final_exploration_frame - self.total_steps)
-
-			self.total_steps += 1
 
 			if self.total_steps % self.recording_frequency == 0:
 				self.train_stats.record(self.total_steps)
@@ -108,6 +104,7 @@ class DQNAgent():
 
 		self.test_state.pop(0)
 		return [action, q_values]
+
 
 		def save_model(self, epoch):
 			self.network.save_model(epoch)

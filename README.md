@@ -5,7 +5,7 @@ The code runs and learns, but I'm still testing and changing it.  It does very w
 
 ## Dependencies/Requirements
 
-1. An nVidia GPU with DDR5 memory to train in a reasonable amount of time
+1. An nVidia GPU with GDDR5 memory to train in a reasonable amount of time
 2. [Python 3](https://www.python.org/)
 3. [The Arcade Learning Environment](https://github.com/mgbellemare/Arcade-Learning-Environment) for the emulator framework.
 4. [Tensorflow](https://www.tensorflow.org/) for gpu numerical computions and symbolic differentiation.

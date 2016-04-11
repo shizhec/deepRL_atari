@@ -76,11 +76,11 @@ class QNetwork():
 
 		self.loss = self.build_loss(args.error_clipping, num_actions, args.double_dqn)
 
-		if args.optimizer == 'rmsprop':
+		if (args.optimizer == 'rmsprop') and (args.gradient_clip <= 0):
 			self.train_op = tf.train.RMSPropOptimizer(
 				args.learning_rate, decay=args.rmsprop_decay, momentum=0.0, epsilon=args.rmsprop_epsilon).minimize(self.loss)
-		elif args.optimizer == 'graves_rmsprop':
-			self.train_op = self.build_rmsprop_optimizer(args.learning_rate, args.rmsprop_decay, args.rmsprop_epsilon, args.gradient_clip)
+		elif (args.optimizer == 'graves_rmsprop') or (args.optimizer == 'rmsprop' and args.gradient_clip > 0):
+			self.train_op = self.build_rmsprop_optimizer(args.learning_rate, args.rmsprop_decay, args.rmsprop_epsilon, args.gradient_clip, args.optimizer)
 
 		self.saver = tf.train.Saver(self.policy_network_params)
 
@@ -247,7 +247,7 @@ class QNetwork():
 			else:
 				errors = (0.5 * tf.square(difference))
 
-			return tf.reduce_sum(errors)  # add option for reduce mean?
+			return tf.reduce_sum(errors)
 
 
 	def train(self, o1, a, r, o2, t):
@@ -276,7 +276,7 @@ class QNetwork():
 		self.saver.save(self.sess, self.path + '/' + self.name + '.ckpt', global_step=epoch)
 
 
-	def build_rmsprop_optimizer(self, learning_rate, rmsprop_decay, rmsprop_constant, gradient_clip):
+	def build_rmsprop_optimizer(self, learning_rate, rmsprop_decay, rmsprop_constant, gradient_clip, version):
 
 		with tf.name_scope('rmsprop'):
 			optimizer = tf.train.GradientDescentOptimizer(learning_rate)
@@ -287,49 +287,40 @@ class QNetwork():
 
 			if gradient_clip > 0:
 				grads = tf.tf.clip_by_global_norm(grad, gradient_clipping)
-			
-			square_grads = [tf.square(grad) for grad in grads]
 
-			avg_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
-			avg_square_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
+			if version == 'rmsprop':
+				return optimizer.apply_gradients(zip(grads, params))
+			elif version == 'graves_rmsprop':
+				square_grads = [tf.square(grad) for grad in grads]
 
-			update_avg_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * grad_pair[1])) 
-				for grad_pair in zip(avg_grads, grads)]
-			update_avg_square_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * tf.square(grad_pair[1]))) 
-				for grad_pair in zip(avg_square_grads, grads)]
-			avg_grad_updates = update_avg_grads + update_avg_square_grads
+				avg_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
+				avg_square_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
 
-			'''
-			# seperate operator for debugging
-			ms = [avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant
-				for avg_grad_pair in zip(avg_grads, avg_square_grads)]
+				update_avg_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * grad_pair[1])) 
+					for grad_pair in zip(avg_grads, grads)]
+				update_avg_square_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * tf.square(grad_pair[1]))) 
+					for grad_pair in zip(avg_square_grads, grads)]
+				avg_grad_updates = update_avg_grads + update_avg_square_grads
 
-			# not_bad = tf.greater(tf.reduce_min(tf.pack(ms)), 0)
-			# tf.Assert(not_bad, tf.pack(ms), summarize=42)
-
-			rms = [tf.sqrt(ms_var) for ms_var in ms]
-			'''
-
-			rms = [tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)
-				for avg_grad_pair in zip(avg_grads, avg_square_grads)]
+				rms = [tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)
+					for avg_grad_pair in zip(avg_grads, avg_square_grads)]
 
 
-			rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
-			train = optimizer.apply_gradients(zip(rms_updates, params))
+				rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
+				train = optimizer.apply_gradients(zip(rms_updates, params))
 
+				'''
+				exp_mov_avg = tf.train.ExponentialMovingAverage(rmsprop_decay)  
 
-			'''
-			exp_mov_avg = tf.train.ExponentialMovingAverage(rmsprop_decay)  
+				update_avg_grads = exp_mov_avg.apply(grads) # ??? tf bug? Why doesn't this work?
+				update_avg_square_grads = exp_mov_avg.apply(square_grads)
 
-			update_avg_grads = exp_mov_avg.apply(grads) # ??? tf bug? Why doesn't this work?
-			update_avg_square_grads = exp_mov_avg.apply(square_grads)
+				rms = tf.abs(tf.sqrt(exp_mov_avg.average(square_grads) - tf.square(exp_mov_avg.average(grads) + rmsprop_constant)))
+				rms_updates = grads / rms
+				train = opt.apply_gradients(zip(rms_updates, params))
+				'''
 
-			rms = tf.abs(tf.sqrt(exp_mov_avg.average(square_grads) - tf.square(exp_mov_avg.average(grads) + rmsprop_constant)))
-			rms_updates = grads / rms
-			train = opt.apply_gradients(zip(rms_updates, params))
-			'''
-
-			return tf.group(train, tf.group(*avg_grad_updates))
+				return tf.group(train, tf.group(*avg_grad_updates))
 
 	def get_weights(self, shape, fan_in, name):
 		std = 1 / tf.sqrt(tf.to_float(fan_in))

@@ -7,7 +7,7 @@ class ParallelQNetwork():
 		''' Build tensorflow graph for deep q network '''
 
 		self.discount_factor = args.discount_factor
-		self.path = 'saved_models/' + args.game + '/' + args.agent_type + '/' + args.agent_name
+		self.path = '../saved_models/' + args.game + '/' + args.agent_type + '/' + args.agent_name
 		self.name = args.agent_name
 
 		# input placeholders
@@ -26,6 +26,7 @@ class ParallelQNetwork():
 		last_target_layer = None
 		self.update_target = []
 		self.policy_network_params = []
+		self.param_names = []
 
 		# initialize convolutional layers
 		for layer in range(num_conv_layers):
@@ -74,26 +75,35 @@ class ParallelQNetwork():
 		self.gpu_q_layer = last_layers[1]
 		self.target_q_layer = last_layers[2]
 
-		self.loss = self.build_loss(args.error_clipping, num_actions)
+		self.loss = self.build_loss(args.error_clipping, num_actions, args.double_dqn)
 
-		self.train_op = None  # add options for more optimizers
-		if args.optimizer == 'rmsprop':
+		if (args.optimizer == 'rmsprop') and (gradient_clip <= 0):
 			self.train_op = tf.train.RMSPropOptimizer(
 				args.learning_rate, decay=args.rmsprop_decay, momentum=0.0, epsilon=args.rmsprop_epsilon).minimize(self.loss)
-		elif args.optimizer == 'graves_rmsprop':
-			self.train_op = self.build_rmsprop_optimizer(args.learning_rate, args.rmsprop_decay, args.rmsprop_epsilon)
+		elif (args.optimizer == 'graves_rmsprop') or (args.optimizer == 'rmsprop' and gradient_clip > 0):
+			self.train_op = self.build_rmsprop_optimizer(args.learning_rate, args.rmsprop_decay, args.rmsprop_epsilon, args.gradient_clip, args.optimizer)
 
-		self.saver = tf.train.Saver(self.policy_network_params)
+		with tf.device('/cpu:0'):
+			self.saver = tf.train.Saver(self.policy_network_params)
+
+			if not args.watch:
+				param_hists = [tf.histogram_summary(name, param) for name, param in zip(self.param_names, self.policy_network_params)]
+				self.param_summaries = tf.merge_summary(param_hists)
 
 		# start tf session
 		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.6)  # avoid using all vram for GTX 970
 		self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
-		if args.watch:
-			load_path = tf.train.latest_checkpoint(self.path)
-			self.saver.restore(self.sess, load_path)		
-		else:
-			self.sess.run(tf.initialize_all_variables())
+		with tf.device('/cpu:0'):
+			if args.watch:
+				print("Loading Saved Network...")
+				load_path = tf.train.latest_checkpoint(self.path)
+				self.saver.restore(self.sess, load_path)
+				print("Network Loaded")		
+			else:
+				self.sess.run(tf.initialize_all_variables())
+				print("Network Initialized")
+				self.summary_writer = tf.train.SummaryWriter('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph_def)
 
 
 	def conv_relu(self, cpu_input, gpu_input, target_input, kernel_shape, stride, layer_num):
@@ -131,6 +141,8 @@ class ParallelQNetwork():
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
+			self.param_names.append(name + "_weights")
+			self.param_names.append(name + "_biases")
 
 			return [cpu_activation, gpu_activation, target_activation]
 
@@ -169,6 +181,8 @@ class ParallelQNetwork():
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
+			self.param_names.append(name + "_weights")
+			self.param_names.append(name + "_biases")
 
 			return [cpu_activation, gpu_activation, target_activation]
 
@@ -207,6 +221,8 @@ class ParallelQNetwork():
 
 			self.policy_network_params.append(weights)
 			self.policy_network_params.append(biases)
+			self.param_names.append(name + "_weights")
+			self.param_names.append(name + "_biases")
 
 			return [cpu_activation, gpu_activation, target_activation]
 
@@ -222,7 +238,7 @@ class ParallelQNetwork():
 		return self.sess.run(self.cpu_q_layer, feed_dict={self.observation:obs})
 
 
-	def build_loss(self, error_clip, num_actions):
+	def build_loss(self, error_clip, num_actions, double_dqn):
 		''' build loss graph '''
 		with tf.name_scope("loss"):
 
@@ -248,7 +264,7 @@ class ParallelQNetwork():
 			else:
 				errors = (0.5 * tf.square(difference))
 
-			return tf.reduce_sum(errors)  # add option for reduce mean?
+			return tf.reduce_sum(errors)
 
 
 	def train(self, o1, a, r, o2, t):
@@ -276,7 +292,7 @@ class ParallelQNetwork():
 		self.saver.save(self.sess, self.path + '/' + self.name + '.ckpt', global_step=epoch)
 
 
-	def build_rmsprop_optimizer(self, learning_rate, rmsprop_decay, rmsprop_constant):
+	def build_rmsprop_optimizer(self, learning_rate, rmsprop_decay, rmsprop_constant, gradient_clip, version):
 
 		with tf.name_scope('rmsprop'):
 			optimizer = tf.train.GradientDescentOptimizer(learning_rate)
@@ -285,33 +301,55 @@ class ParallelQNetwork():
 			grads = [gv[0] for gv in grads_and_vars]
 			params = [gv[1] for gv in grads_and_vars]
 
-			square_grads = [tf.square(grad) for grad in grads]
+			if gradient_clip > 0:
+				grads = tf.tf.clip_by_global_norm(grad, gradient_clipping)
 
-			avg_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
-			avg_square_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
+			if version == 'rmsprop':
+				return optimizer.apply_gradients(zip(grads, params))
+			elif version == 'graves_rmsprop':
+				square_grads = [tf.square(grad) for grad in grads]
 
-			update_avg_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * grad_pair[1])) 
-				for grad_pair in zip(avg_grads, grads)]
-			update_avg_square_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * tf.square(grad_pair[1]))) 
-				for grad_pair in zip(avg_square_grads, grads)]
-			avg_grad_updates = update_avg_grads + update_avg_square_grads
+				avg_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
+				avg_square_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
 
-			rms = [tf.abs(tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)) 
-				for avg_grad_pair in zip(avg_grads, avg_square_grads)]
+				update_avg_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * grad_pair[1])) 
+					for grad_pair in zip(avg_grads, grads)]
+				update_avg_square_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * tf.square(grad_pair[1]))) 
+					for grad_pair in zip(avg_square_grads, grads)]
+				avg_grad_updates = update_avg_grads + update_avg_square_grads
 
-			rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
-			train = optimizer.apply_gradients(zip(rms_updates, params))
+				rms = [tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)
+					for avg_grad_pair in zip(avg_grads, avg_square_grads)]
 
 
-			'''
-			exp_mov_avg = tf.train.ExponentialMovingAverage(rmsprop_decay)  
+				rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
+				train = optimizer.apply_gradients(zip(rms_updates, params))
 
-			update_avg_grads = exp_mov_avg.apply(grads) # ??? tf bug? Why doesn't this work?
-			update_avg_square_grads = exp_mov_avg.apply(square_grads)
+				'''
+				exp_mov_avg = tf.train.ExponentialMovingAverage(rmsprop_decay)  
 
-			rms = tf.abs(tf.sqrt(exp_mov_avg.average(square_grads) - tf.square(exp_mov_avg.average(grads) + rmsprop_constant)))
-			rms_updates = grads / rms
-			train = opt.apply_gradients(zip(rms_updates, params))
-			'''
+				update_avg_grads = exp_mov_avg.apply(grads) # ??? tf bug? Why doesn't this work?
+				update_avg_square_grads = exp_mov_avg.apply(square_grads)
 
-			return tf.group(train, tf.group(*avg_grad_updates))
+				rms = tf.abs(tf.sqrt(exp_mov_avg.average(square_grads) - tf.square(exp_mov_avg.average(grads) + rmsprop_constant)))
+				rms_updates = grads / rms
+				train = opt.apply_gradients(zip(rms_updates, params))
+				'''
+
+				return tf.group(train, tf.group(*avg_grad_updates))
+
+
+	def get_weights(self, shape, fan_in, name):
+		with tf.device('/cpu:0'):
+			std = 1 / tf.sqrt(tf.to_float(fan_in))
+			return tf.Variable(tf.random_uniform(shape, minval=(0 - std), maxval=std), name=name)
+
+	def get_biases(self, shape, fan_in, name):
+		with tf.device('/cpu:0'):
+			std = 1 / tf.sqrt(tf.to_float(fan_in))
+			return tf.Variable(tf.fill(shape, std), name=name)
+
+	def record_params(self, step):
+		with tf.device('/cpu:0'):
+			summary_string = self.sess.run(self.param_summaries)
+			self.summary_writer.add_summary(summary_string, step)
