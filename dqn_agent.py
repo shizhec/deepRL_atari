@@ -19,7 +19,6 @@ class DQNAgent():
 		self.final_exploration_rate = args.final_exploration_rate
 		self.final_exploration_frame = args.final_exploration_frame
 		self.test_exploration_rate = args.test_exploration_rate
-		self.target_update_frequency = args.target_update_frequency
 		self.recording_frequency = args.recording_frequency
 
 		self.exploration_rate = self.initial_exploration_rate
@@ -76,9 +75,6 @@ class DQNAgent():
 				self.train_stats.add_loss(loss)
 
 			self.total_steps += 1
-
-			if self.total_steps % self.target_update_frequency == 0:
-				self.network.update_target_network()
 
 			if self.total_steps < self.final_exploration_frame:
 				self.exploration_rate -= (self.exploration_rate - self.final_exploration_rate) / (self.final_exploration_frame - self.total_steps)

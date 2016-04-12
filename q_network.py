@@ -11,6 +11,8 @@ class QNetwork():
 		print("Initializing Q-Network")
 
 		self.discount_factor = args.discount_factor
+		self.target_update_frequency = args.target_update_frequency
+		self.total_updates = 0
 		self.path = '../saved_models/' + args.game + '/' + args.agent_type + '/' + args.agent_name
 		if not os.path.exists(self.path):
    			os.makedirs(self.path)
@@ -260,15 +262,14 @@ class QNetwork():
 			o2: succeeding observations
 		'''
 
-		return self.sess.run([self.train_op, self.loss], 
+		loss = self.sess.run([self.train_op, self.loss], 
 			feed_dict={self.observation:o1, self.actions:a, self.rewards:r, self.next_observation:o2, self.terminals:t})[1]
 
+		self.total_updates += 1
+		if self.total_updates % self.target_update_frequency == 0:
+			self.sess.run(self.update_target)
 
-	def update_target_network(self):
-		''' update weights and biases of target network '''
-
-		self.sess.run(self.update_target)
-
+		return loss
 
 
 	def save_model(self, epoch):
@@ -286,7 +287,7 @@ class QNetwork():
 			params = [gv[1] for gv in grads_and_vars]
 
 			if gradient_clip > 0:
-				grads = tf.tf.clip_by_global_norm(grad, gradient_clipping)
+				grads = tf.clip_by_global_norm(grads, gradient_clip)[0]
 
 			if version == 'rmsprop':
 				return optimizer.apply_gradients(zip(grads, params))
@@ -309,18 +310,8 @@ class QNetwork():
 				rms_updates = [grad_rms_pair[0] / grad_rms_pair[1] for grad_rms_pair in zip(grads, rms)]
 				train = optimizer.apply_gradients(zip(rms_updates, params))
 
-				'''
-				exp_mov_avg = tf.train.ExponentialMovingAverage(rmsprop_decay)  
-
-				update_avg_grads = exp_mov_avg.apply(grads) # ??? tf bug? Why doesn't this work?
-				update_avg_square_grads = exp_mov_avg.apply(square_grads)
-
-				rms = tf.abs(tf.sqrt(exp_mov_avg.average(square_grads) - tf.square(exp_mov_avg.average(grads) + rmsprop_constant)))
-				rms_updates = grads / rms
-				train = opt.apply_gradients(zip(rms_updates, params))
-				'''
-
 				return tf.group(train, tf.group(*avg_grad_updates))
+
 
 	def get_weights(self, shape, fan_in, name):
 		std = 1 / tf.sqrt(tf.to_float(fan_in))
