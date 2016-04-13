@@ -280,7 +280,11 @@ class QNetwork():
 	def build_rmsprop_optimizer(self, learning_rate, rmsprop_decay, rmsprop_constant, gradient_clip, version):
 
 		with tf.name_scope('rmsprop'):
-			optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+			optimizer = None
+			if version == 'rmsprop':
+				optimizer = tf.train.RMSPropOptimizer(learning_rate, decay=rmsprop_decay, momentum=0.0, epsilon=rmsprop_constant)
+			elif version == 'graves_rmsprop':
+				optimizer = tf.train.GradientDescentOptimizer(learning_rate)
 
 			grads_and_vars = optimizer.compute_gradients(self.loss)
 			grads = [gv[0] for gv in grads_and_vars]

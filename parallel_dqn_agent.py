@@ -71,8 +71,7 @@ class ParallelDQNAgent():
 			self.train_steps += 1
 
 			if self.train_steps < (self.final_exploration_frame / self.training_frequency):
-				self.exploration_rate -= (self.exploration_rate - self.final_exploration_rate) / 
-					(self.final_exploration_frame - (self.training_frequency * self.train_steps))
+				self.exploration_rate -= (self.exploration_rate - self.final_exploration_rate) / (self.final_exploration_frame - (self.training_frequency * self.train_steps))
 
 			if (self.train_steps * self.training_frequency) % self.recording_frequency == 0:
 				self.train_stats.record(self.random_exploration_length + (self.train_steps * self.training_frequency))

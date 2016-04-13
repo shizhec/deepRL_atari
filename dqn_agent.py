@@ -102,5 +102,5 @@ class DQNAgent():
 		return [action, q_values]
 
 
-		def save_model(self, epoch):
-			self.network.save_model(epoch)
+	def save_model(self, epoch):
+		self.network.save_model(epoch)

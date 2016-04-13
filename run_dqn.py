@@ -60,7 +60,7 @@ def main():
 	parser.add_argument("--error_clipping", type=float, help="constant at which td-error becomes linear instead of quadratic", default=1.0)
 	# set gradient clipping to 0 or less to disable.  Currently only works with graves_rmsprop.
 	parser.add_argument("--gradient_clip", type=float, help="clip gradients to have the provided L2-norm", default=0)
-	parser.add_argument("--target_update_frequency", type=int, help="number of steps between target network updates", default=10000)
+	parser.add_argument("--target_update_frequency", type=int, help="number of policy network updates between target network updates", default=10000)
 	parser.add_argument("--memory_capacity", type=int, help="max number of experiences to store in experience memory", default=1000000)
 	parser.add_argument("--batch_size", type=int, help="number of transitions sampled from memory during learning", default=32)
 	# must set to custom in order to specify custom architecture
