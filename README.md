@@ -1,9 +1,9 @@
 # deep_rl_ale
-This repo contains an implementation of [this paper](http://home.uchicago.edu/~arij/journalclub/papers/2015_Mnih_et_al.pdf) in TensorFlow.  
+This repo contains an implementation of [this paper](http://home.uchicago.edu/~arij/journalclub/papers/2015_Mnih_et_al.pdf) in TensorFlow.  It also contains the option to use the [double dqn](http://arxiv.org/pdf/1509.06461v3.pdf) loss function
 
 [Watch it play Breakout here](https://youtu.be/FoLLyF0vyv0)
 
-The code runs and learns, but I'm still testing and changing it.  It does very well on Pong and Breakout.  The code is still a little messy in some places, but will be cleaned up in the future.
+The code runs and learns, but I'm still testing and changing it.  It does very well on Pong and Breakout.  The code is still a little messy in some places, but will be cleaned up in the future, but there will probably not be any significant updates or changes until mid-May.
 
 ## Dependencies/Requirements
 
@@ -26,7 +26,7 @@ For example:
 
 `$ python3 ./run_dqn.py breakout dqn brick_hunter`
 
-####Watching
+### Watching
 `$ python3 ./run_dqn.py <name_of_game> <name_of_algorithm/method> <name_of_saved_model> --watch`
 Where \<name_of_saved_model\> is the \<name_of_agent_instance\> used during training.  If you used any non-default settings, make sure to use the same ones when watching as well.
 
@@ -41,6 +41,8 @@ By default rom files are expected to be in a folder titled 'roms' in the parent 
 
 Statistics and saved models are saved in the parent directory of the repo as well.
 
+The default settings are very similar to those used in the DeepMond Nature paper.  There are only a few small differences of which I am aware.
+
 A full training run takes between 3.5 and 4 days on my nVidia GTX 970.
 
-The parallel option hasn't been updated recently and does not currently work.
+The parallel option probably doesn't work currently.
