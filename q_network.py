@@ -298,8 +298,8 @@ class QNetwork():
 			elif version == 'graves_rmsprop':
 				square_grads = [tf.square(grad) for grad in grads]
 
-				avg_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
-				avg_square_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
+				avg_grads = [tf.Variable(tf.zeros(var.get_shape())) for var in params]
+				avg_square_grads = [tf.Variable(tf.zeros(var.get_shape())) for var in params]
 
 				update_avg_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * grad_pair[1])) 
 					for grad_pair in zip(avg_grads, grads)]

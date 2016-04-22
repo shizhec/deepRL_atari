@@ -1,4 +1,3 @@
-
 import random
 import numpy as np
 import threading
@@ -25,6 +24,8 @@ class ParallelDQNAgent():
 		self.exploration_rate = self.initial_exploration_rate
 		self.total_steps = 0
 		self.train_steps = 0
+		self.current_act_steps = 0
+		self.current_train_steps = 0
 
 		self.test_state = []
 		self.epoch_over = False
@@ -58,6 +59,7 @@ class ParallelDQNAgent():
 			self.memory.add(state, action, reward, terminal)
 			self.checkGameOver()
 			self.total_steps += 1
+			self.current_act_steps += 1
 			if (self.total_steps % self.recording_frequency == 0) and (not self.total_steps == self.random_exploration_length):
 				self.train_stats.record(self.total_steps)
 
@@ -69,9 +71,10 @@ class ParallelDQNAgent():
 			loss = self.network.train(states, actions, rewards, next_states, terminals)
 			self.train_stats.add_loss(loss)
 			self.train_steps += 1
+			self.current_train_steps += 1
 
 			if self.train_steps < (self.final_exploration_frame / self.training_frequency):
-				self.exploration_rate -= (self.exploration_rate - self.final_exploration_rate) / (self.final_exploration_frame - (self.training_frequency * self.train_steps))
+				self.exploration_rate -= (self.exploration_rate - self.final_exploration_rate) / ((self.final_exploration_frame / self.training_frequency) - self.train_steps)
 
 			if (self.train_steps * self.training_frequency) % self.recording_frequency == 0:
 				self.train_stats.record(self.random_exploration_length + (self.train_steps * self.training_frequency))
@@ -91,10 +94,13 @@ class ParallelDQNAgent():
 			self.checkGameOver()
 
 			self.total_steps += 1
+			self.current_act_steps += 1
 
-		print("act_steps: {0}".format(self.total_steps))
-		print("learn_steps: {0}".format(self.train_steps))
+		print("act_steps: {0}".format(self.current_act_steps))
+		print("learn_steps: {0}".format(self.current_train_steps))
 		self.network.save_model(epoch)
+		self.current_act_steps = 0
+		self.current_train_steps = 0
 
 
 	def test_step(self, observation):

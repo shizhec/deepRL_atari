@@ -1,4 +1,6 @@
 import tensorflow as tf
+import os
+import numpy as np
 
 
 class ParallelQNetwork():
@@ -241,6 +243,10 @@ class ParallelQNetwork():
 
 		return self.sess.run(self.cpu_q_layer, feed_dict={self.observation:obs})
 
+	def gpu_inference(self, obs):
+
+		return self.sess.run(self.gpu_q_layer, feed_dict={self.observation:obs})
+
 
 	def build_loss(self, error_clip, num_actions, double_dqn):
 		''' build loss graph '''
@@ -299,22 +305,26 @@ class ParallelQNetwork():
 	def build_rmsprop_optimizer(self, learning_rate, rmsprop_decay, rmsprop_constant, gradient_clip, version):
 
 		with tf.name_scope('rmsprop'):
-			optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+			optimizer = None
+			if version == 'rmsprop':
+				optimizer = tf.train.RMSPropOptimizer(learning_rate, decay=rmsprop_decay, momentum=0.0, epsilon=rmsprop_constant)
+			elif version == 'graves_rmsprop':
+				optimizer = tf.train.GradientDescentOptimizer(learning_rate)
 
 			grads_and_vars = optimizer.compute_gradients(self.loss)
 			grads = [gv[0] for gv in grads_and_vars]
 			params = [gv[1] for gv in grads_and_vars]
 
 			if gradient_clip > 0:
-				grads = tf.clip_by_global_norm(grads, gradient_clip)
+				grads = tf.clip_by_global_norm(grads, gradient_clip)[0]
 
 			if version == 'rmsprop':
 				return optimizer.apply_gradients(zip(grads, params))
 			elif version == 'graves_rmsprop':
 				square_grads = [tf.square(grad) for grad in grads]
 
-				avg_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
-				avg_square_grads = [tf.Variable(tf.ones(var.get_shape())) for var in params]
+				avg_grads = [tf.Variable(tf.zeros(var.get_shape())) for var in params]
+				avg_square_grads = [tf.Variable(tf.zeros(var.get_shape())) for var in params]
 
 				update_avg_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * grad_pair[1])) 
 					for grad_pair in zip(avg_grads, grads)]
