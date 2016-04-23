@@ -76,8 +76,9 @@ class ParallelDQNAgent():
 			if self.train_steps < (self.final_exploration_frame / self.training_frequency):
 				self.exploration_rate -= (self.exploration_rate - self.final_exploration_rate) / ((self.final_exploration_frame / self.training_frequency) - self.train_steps)
 
-			if (self.train_steps * self.training_frequency) % self.recording_frequency == 0:
+			if ((self.train_steps * self.training_frequency) % self.recording_frequency == 0) and not (step == steps - 1):
 				self.train_stats.record(self.random_exploration_length + (self.train_steps * self.training_frequency))
+				self.network.record_params(self.random_exploration_length + (self.train_steps * self.training_frequency))
 
 		self.epoch_over = True
 
@@ -98,6 +99,8 @@ class ParallelDQNAgent():
 
 		print("act_steps: {0}".format(self.current_act_steps))
 		print("learn_steps: {0}".format(self.current_train_steps))
+		self.train_stats.record(self.random_exploration_length + (self.train_steps * self.training_frequency))
+		self.network.record_params(self.random_exploration_length + (self.train_steps * self.training_frequency))
 		self.network.save_model(epoch)
 		self.current_act_steps = 0
 		self.current_train_steps = 0
@@ -113,7 +116,7 @@ class ParallelDQNAgent():
 		action = None
 		if random.random() >= self.test_exploration_rate:
 			state = np.expand_dims(np.transpose(self.test_state, [1,2,0]), axis=0)
-			q_values = self.network.inference(state)
+			q_values = self.network.gpu_inference(state)
 			action = np.argmax(q_values)
 		else:
 			action = random.randrange(self.num_actions)
