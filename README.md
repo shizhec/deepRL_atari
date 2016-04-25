@@ -43,4 +43,4 @@ Statistics and saved models are saved in the parent directory of the repo as wel
 
 The default settings are very similar to those used in the DeepMond Nature paper.  There are only a few small differences of which I am aware.
 
-A full training run takes between 3 and 4 days on my nVidia GTX 970, depending on whether or not the parallel option is used.  Parallel training speeds up training by ~27%, but it may cause different results on some games, due to the higher acting/learning ratio.  I haven't tested enough to know yet.
+A full training run takes between 62 and 92 hours on my nVidia GTX 970, depending on whether or not the parallel option is used.  Parallel training speeds up training by up to 47%, but I'm still testing how different things impact speed.

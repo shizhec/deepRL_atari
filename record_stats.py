@@ -15,7 +15,7 @@ class RecordStats:
 		self.q_values = 0.0
 		self.q_count = 0
 		self.current_score = 0
-		self.max_score = 0
+		self.max_score = -1000000000
 		self.min_score = 1000000000
 		self.recording_frequency = args.recording_frequency
 

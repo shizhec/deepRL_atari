@@ -17,13 +17,12 @@ class ParallelQNetwork():
 		self.name = args.agent_name
 
 		# input placeholders
-		self.observation = tf.placeholder(tf.float32, shape=[None, args.screen_dims[0], args.screen_dims[1], args.history_length], name="observation")
+		with tf.device('/cpu:0'):
+			self.observation = tf.placeholder(tf.float32, shape=[None, args.screen_dims[0], args.screen_dims[1], args.history_length], name="observation")
 		self.actions = tf.placeholder(tf.float32, shape=[None, num_actions], name="actions") # one-hot matrix because tf.gather() doesn't support multidimensional indexing yet
 		self.rewards = tf.placeholder(tf.float32, shape=[None], name="rewards")
 		self.next_observation = tf.placeholder(tf.float32, shape=[None, args.screen_dims[0], args.screen_dims[1], args.history_length], name="next_observation")
 		self.terminals = tf.placeholder(tf.float32, shape=[None], name="terminals")
-		self.normalized_observation = self.observation / 255.0
-		self.normalized_next_observation = self.next_observation / 255.0
 
 		num_conv_layers = len(args.conv_kernel_shapes)
 		assert(num_conv_layers == len(args.conv_strides))
@@ -42,9 +41,10 @@ class ParallelQNetwork():
 			gpu_input = None
 			target_input = None
 			if layer == 0:
-				cpu_input = self.normalized_observation
-				gpu_input = self.normalized_observation
-				target_input = self.normalized_next_observation
+				with tf.device('/cpu:0'):
+					cpu_input = self.observation / 255.0
+				gpu_input = self.observation / 255.0
+				target_input = self.next_observation / 255.0
 			else:
 				cpu_input = last_cpu_layer
 				gpu_input = last_gpu_layer

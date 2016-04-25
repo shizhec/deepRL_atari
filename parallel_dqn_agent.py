@@ -60,7 +60,7 @@ class ParallelDQNAgent():
 			self.checkGameOver()
 			self.total_steps += 1
 			self.current_act_steps += 1
-			if (self.total_steps % self.recording_frequency == 0) and (not self.total_steps == self.random_exploration_length):
+			if (self.total_steps % self.recording_frequency == 0):
 				self.train_stats.record(self.total_steps)
 
 
@@ -125,5 +125,5 @@ class ParallelDQNAgent():
 		return [action, q_values]
 		
 
-		def save_model(self, epoch):
-			self.network.save_model(epoch)
+	def save_model(self, epoch):
+		self.network.save_model(epoch)
