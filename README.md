@@ -1,7 +1,7 @@
 # deep_rl_ale
 This repo contains an implementation of [this paper](http://home.uchicago.edu/~arij/journalclub/papers/2015_Mnih_et_al.pdf) in TensorFlow.  It also contains the option to use the [double dqn](http://arxiv.org/pdf/1509.06461v3.pdf) loss function, as well as a parallel version that acts and learns simultaneously to speed up training.
 
-[Watch it play Breakout here](https://youtu.be/FoLLyF0vyv0)
+[Watch it play Pong, Breakout, and Space Invaders here](https://youtu.be/5YR8rBec8ts)
 
 The code is still a little messy in some places, and will be cleaned up in the future, but there will probably not be any significant updates or changes until mid-May.
 
