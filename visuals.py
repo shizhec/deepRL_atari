@@ -19,7 +19,10 @@ class Visuals:
 
 		xlocations = np.linspace(0.5, self.num_actions - 0.5, num=self.num_actions)
 		xlocations = np.append(xlocations, self.num_actions + 0.05)
-		self.fig = plt.figure()
+		if self.num_actions > 8:
+			self.fig = plt.figure(figsize=(self.num_actions, 6.0))
+		else:
+			self.fig = plt.figure()
 		self.bars = plt.bar(np.arange(self.num_actions), np.zeros(self.num_actions), 0.9)
 		plt.xticks(xlocations, action_names + [''])
 		plt.ylabel('Expected Future Reward')
