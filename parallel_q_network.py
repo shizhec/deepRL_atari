@@ -85,10 +85,10 @@ class ParallelQNetwork():
 
 		self.loss = self.build_loss(args.error_clipping, num_actions, args.double_dqn)
 
-		if (args.optimizer == 'rmsprop') and (gradient_clip <= 0):
+		if (args.optimizer == 'rmsprop') and (args.gradient_clip <= 0):
 			self.train_op = tf.train.RMSPropOptimizer(
 				args.learning_rate, decay=args.rmsprop_decay, momentum=0.0, epsilon=args.rmsprop_epsilon).minimize(self.loss)
-		elif (args.optimizer == 'graves_rmsprop') or (args.optimizer == 'rmsprop' and gradient_clip > 0):
+		elif (args.optimizer == 'graves_rmsprop') or (args.optimizer == 'rmsprop' and args.gradient_clip > 0):
 			self.train_op = self.build_rmsprop_optimizer(args.learning_rate, args.rmsprop_decay, args.rmsprop_epsilon, args.gradient_clip, args.optimizer)
 
 		with tf.device('/cpu:0'):
