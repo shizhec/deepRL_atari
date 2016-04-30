@@ -102,7 +102,7 @@ class QNetwork():
 		else:
 			self.sess.run(tf.initialize_all_variables())
 			print("Network Initialized")
-			self.summary_writer = tf.train.SummaryWriter('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph_def)
+			self.summary_writer = tf.train.SummaryWriter('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph)
 
 
 	def conv_relu(self, policy_input, target_input, kernel_shape, stride, layer_num):

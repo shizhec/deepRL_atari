@@ -91,27 +91,25 @@ class ParallelQNetwork():
 		elif (args.optimizer == 'graves_rmsprop') or (args.optimizer == 'rmsprop' and args.gradient_clip > 0):
 			self.train_op = self.build_rmsprop_optimizer(args.learning_rate, args.rmsprop_decay, args.rmsprop_epsilon, args.gradient_clip, args.optimizer)
 
-		with tf.device('/cpu:0'):
-			self.saver = tf.train.Saver(self.policy_network_params)
+		self.saver = tf.train.Saver(self.policy_network_params)
 
-			if not args.watch:
-				param_hists = [tf.histogram_summary(name, param) for name, param in zip(self.param_names, self.policy_network_params)]
-				self.param_summaries = tf.merge_summary(param_hists)
+		if not args.watch:
+			param_hists = [tf.histogram_summary(name, param) for name, param in zip(self.param_names, self.policy_network_params)]
+			self.param_summaries = tf.merge_summary(param_hists)
 
 		# start tf session
 		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.6)  # avoid using all vram for GTX 970
 		self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
-		with tf.device('/cpu:0'):
-			if args.watch:
-				print("Loading Saved Network...")
-				load_path = tf.train.latest_checkpoint(self.path)
-				self.saver.restore(self.sess, load_path)
-				print("Network Loaded")		
-			else:
-				self.sess.run(tf.initialize_all_variables())
-				print("Network Initialized")
-				self.summary_writer = tf.train.SummaryWriter('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph_def)
+		if args.watch:
+			print("Loading Saved Network...")
+			load_path = tf.train.latest_checkpoint(self.path)
+			self.saver.restore(self.sess, load_path)
+			print("Network Loaded")		
+		else:
+			self.sess.run(tf.initialize_all_variables())
+			print("Network Initialized")
+			self.summary_writer = tf.train.SummaryWriter('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph)
 
 
 	def conv_relu(self, cpu_input, gpu_input, target_input, kernel_shape, stride, layer_num):
@@ -130,9 +128,10 @@ class ParallelQNetwork():
 			cpu_activation = None
 			gpu_activation = None
 			target_activation = None
+			
+			weights = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.01), name=(name + "_weights"))
+			biases = tf.Variable(tf.fill([kernel_shape[-1]], 0.01), name=(name + "_biases"))
 			with tf.device('/cpu:0'):
-				weights = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.01), name=(name + "_weights"))
-				biases = tf.Variable(tf.fill([kernel_shape[-1]], 0.01), name=(name + "_biases"))
 
 				cpu_activation = tf.nn.relu(tf.nn.conv2d(cpu_input, weights, stride, 'VALID') + biases)
 
@@ -170,9 +169,10 @@ class ParallelQNetwork():
 			cpu_activation = None
 			gpu_activation = None
 			target_activation = None
+			
+			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
+			biases = tf.Variable(tf.fill([shape[-1]], 0.01), name=(name + "_biases"))
 			with tf.device('/cpu:0'):
-				weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
-				biases = tf.Variable(tf.fill([shape[-1]], 0.01), name=(name + "_biases"))
 
 				cpu_activation = tf.nn.relu(tf.matmul(cpu_input, weights) + biases)
 
@@ -210,9 +210,10 @@ class ParallelQNetwork():
 			cpu_activation = None
 			gpu_activation = None
 			target_activation = None
+		
+			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
+			biases = tf.Variable(tf.fill([shape[-1]], 0.01), name=(name + "_biases"))
 			with tf.device('/cpu:0'):
-				weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
-				biases = tf.Variable(tf.fill([shape[-1]], 0.01), name=(name + "_biases"))
 
 				cpu_activation = tf.matmul(cpu_input, weights) + biases
 
