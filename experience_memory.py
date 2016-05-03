@@ -98,5 +98,5 @@ class ExperienceMemory:
 		a = np.eye(self.num_actions)[self.actions[samples]] # convert actions to one-hot matrix
 		r = self.rewards[samples]
 		o2 = self.get_state(samples)
-		t = np.invert(self.terminals[samples]).astype(int)  # invert and convert to 0's and 1's to cancel out next Q-value when there is a terminal transition
+		t = self.terminals[samples].astype(int)
 		return [o1, a, r, o2, t]

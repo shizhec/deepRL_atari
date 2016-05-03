@@ -238,7 +238,7 @@ class QNetwork():
 			else:
 				max_action_values = tf.reduce_max(self.target_q_layer, 1)
 
-			targets = tf.stop_gradient(self.rewards + (self.discount_factor * max_action_values * self.terminals))
+			targets = tf.stop_gradient(self.rewards + (self.discount_factor * max_action_values * (1 - self.terminals)))
 
 			difference = tf.abs(predictions - targets)
 
