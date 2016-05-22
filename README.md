@@ -1,7 +1,7 @@
 # deep_rl_ale
 This repo contains an implementation of [this paper](http://home.uchicago.edu/~arij/journalclub/papers/2015_Mnih_et_al.pdf) in TensorFlow.  It also contains the option to use the [double dqn](http://arxiv.org/pdf/1509.06461v3.pdf) loss function, as well as a parallel version that acts and learns simultaneously to speed up training.
 
-[Watch it play Pong, Breakout, and Space Invaders here](https://youtu.be/5YR8rBec8ts)
+[Watch it play Pong, Breakout, Space Invaders, and Seaquest here](https://youtu.be/gQ9FsAGb148)
 
 The code is still a little messy in some places, and will be cleaned up in the future, but there will probably not be any significant updates or changes until mid-May.
 
@@ -43,4 +43,4 @@ Statistics and saved models are saved in the parent directory of the repo as wel
 
 The default settings are very similar to those used in the DeepMond Nature paper.  There are only a few small differences of which I am aware.
 
-A full training run takes between 62 and 92 hours on my nVidia GTX 970, depending on whether or not the parallel option is used.  Parallel training speeds up training by up to 47%, but I'm still testing how different things impact speed.
+A full training run takes between 3 and 4 days on my nVidia GTX 970, depending on whether or not the parallel option is used.  Parallel training speeds up training by ~30%, but I'm still testing how different things impact speed.
