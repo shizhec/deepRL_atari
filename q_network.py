@@ -1,6 +1,7 @@
 import tensorflow as tf
 import os
 import numpy as np
+import math
 
 
 class QNetwork():
@@ -117,11 +118,10 @@ class QNetwork():
 		name = 'conv' + str(layer_num + 1)
 		with tf.variable_scope(name):
 
-			# fan_in = tf.reduce_prod(tf.slice(policy_input.get_shape(), [1], [-1]))
-			weights = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.01), name=(name + "_weights"))
-			# weights = self.get_weights(kernel_shape, fan_in, name + "_weights")
-			biases = tf.Variable(tf.fill([kernel_shape[-1]], 0.1), name=(name + "_biases"))
-			# biases = self.get_biases([kernel_shape[-1]], fan_in, name + "_biases")
+			# weights = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.01), name=(name + "_weights"))
+			weights = self.get_weights(kernel_shape, name)
+			# biases = tf.Variable(tf.fill([kernel_shape[-1]], 0.1), name=(name + "_biases"))
+			biases = self.get_biases(kernel_shape, name)
 
 			activation = tf.nn.relu(tf.nn.conv2d(policy_input, weights, stride, 'VALID') + biases)
 
@@ -152,11 +152,10 @@ class QNetwork():
 		name = 'dense' + str(layer_num + 1)
 		with tf.variable_scope(name):
 
-			# fan_in = tf.reduce_prod(tf.slice(policy_input.get_shape(), [1], [-1]))
-			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
-			# weights = self.get_weights(shape, fan_in, name + "_weights")
-			biases = tf.Variable(tf.fill([shape[-1]], 0.1), name=(name + "_biases"))
-			# biases = self.get_biases([shape[-1]], fan_in, name + "_biases")
+			# weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
+			weights = self.get_weights(shape, name)
+			# biases = tf.Variable(tf.fill([shape[-1]], 0.1), name=(name + "_biases"))
+			biases = self.get_biases(shape, name)
 
 			activation = tf.nn.relu(tf.matmul(policy_input, weights) + biases)
 
@@ -187,11 +186,10 @@ class QNetwork():
 		name = 'q_layer'
 		with tf.variable_scope(name):
 
-			# fan_in = tf.reduce_prod(tf.slice(policy_input.get_shape(), [1], [-1]))
-			weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
-			# weights = self.get_weights(shape, fan_in, name + "_weights")
-			biases = tf.Variable(tf.fill([shape[-1]], 0.1), name=(name + "_biases"))
-			# biases = self.get_biases([shape[-1]], fan_in, name + "_biases")
+			# weights = tf.Variable(tf.truncated_normal(shape, stddev=0.01), name=(name + "_weights"))
+			weights = self.get_weights(shape, name)
+			# biases = tf.Variable(tf.fill([shape[-1]], 0.1), name=(name + "_biases"))
+			biases = self.get_biases(shape, name)
 
 
 			activation = tf.matmul(policy_input, weights) + biases
@@ -317,13 +315,15 @@ class QNetwork():
 				return tf.group(train, tf.group(*avg_grad_updates))
 
 
-	def get_weights(self, shape, fan_in, name):
-		std = 1 / tf.sqrt(tf.to_float(fan_in))
-		return tf.Variable(tf.random_uniform(shape, minval=(0 - std), maxval=std), name=name)
+	def get_weights(self, shape, name):
+		fan_in = np.prod(shape[0:-1])
+		std = 1 / math.sqrt(fan_in)
+		return tf.Variable(tf.random_uniform(shape, minval=(-std), maxval=std), name=(name + "_weights"))
 
-	def get_biases(self, shape, fan_in, name):
-		std = 1 / tf.sqrt(tf.to_float(fan_in))
-		return tf.Variable(tf.fill(shape, std), name=name)
+	def get_biases(self, shape, name):
+		fan_in = np.prod(shape[0:-1])
+		std = 1 / math.sqrt(fan_in)
+		return tf.Variable(tf.random_uniform([shape[-1]], minval=(-std), maxval=std), name=(name + "_biases"))
 
 	def record_params(self, step):
 		summary_string = self.sess.run(self.param_summaries)
