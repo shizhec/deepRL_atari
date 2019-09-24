@@ -15,7 +15,7 @@ def main():
 	parser.add_argument("game", type=str, help="name of game to play")
 	parser.add_argument("agent_type", type=str, help="name of learning/acting technique used")
 	parser.add_argument("agent_name", type=str, help="unique name of this agent instance")
-	parser.add_argument("--rom_path", type=str, help="path to directory containing atari game roms", default='../roms')
+	parser.add_argument("--rom_path", type=str, help="path to directory containing atari game roms", default='./roms')
 	parser.add_argument("--watch",
 		help="if true, a pretrained model with the specified name is loaded and tested with the game screen displayed", 
 		action='store_true')

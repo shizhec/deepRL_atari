@@ -28,26 +28,26 @@ class RecordStats:
 			self.min_r = tf.placeholder(tf.float32, shape=[])
 			self.time = tf.placeholder(tf.float32, shape=[])
 
-			self.spg_summ = tf.scalar_summary('score_per_game', self.spg)
-			self.q_summ = tf.scalar_summary('q_values', self.mean_q)
-			self.gp_summ = tf.scalar_summary('steps_per_game', self.total_gp)
-			self.max_summ = tf.scalar_summary('maximum_score', self.max_r)
-			self.min_summ = tf.scalar_summary('minimum_score', self.min_r)
-			self.time_summ = tf.scalar_summary('steps_per_second', self.time)
+			self.spg_summ = tf.summary.scalar('score_per_game', self.spg)
+			self.q_summ = tf.summary.scalar('q_values', self.mean_q)
+			self.gp_summ = tf.summary.scalar('steps_per_game', self.total_gp)
+			self.max_summ = tf.summary.scalar('maximum_score', self.max_r)
+			self.min_summ = tf.summary.scalar('minimum_score', self.min_r)
+			self.time_summ = tf.summary.scalar('steps_per_second', self.time)
 
 
 			if not test:
 				self.mean_l = tf.placeholder(tf.float32, shape=[], name='loss')
-				self.l_summ = tf.scalar_summary('loss', self.mean_l)
-				self.summary_op = tf.merge_summary([self.spg_summ, self.q_summ, self.gp_summ, self.l_summ, self.max_summ, self.min_summ, self.time_summ])
+				self.l_summ = tf.summary.scalar('loss', self.mean_l)
+				self.summary_op = tf.summary.merge([self.spg_summ, self.q_summ, self.gp_summ, self.l_summ, self.max_summ, self.min_summ, self.time_summ])
 				self.path = ('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/train')
 			else:
-				self.summary_op = tf.merge_summary([self.spg_summ, self.q_summ, self.gp_summ, self.max_summ, self.min_summ, self.time_summ])
+				self.summary_op = tf.summary.merge([self.spg_summ, self.q_summ, self.gp_summ, self.max_summ, self.min_summ, self.time_summ])
 				self.path = ('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/test')
 
 			# self.summary_op = tf.merge_all_summaries()
 			self.sess = tf.Session()
-			self.summary_writer = tf.train.SummaryWriter(self.path)
+			self.summary_writer = tf.summary.FileWriter(self.path)
 			self.start_time = time.time()
 
 	def record(self, epoch):

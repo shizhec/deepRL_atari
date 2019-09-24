@@ -14,7 +14,8 @@ class QNetwork():
 		self.discount_factor = args.discount_factor
 		self.target_update_frequency = args.target_update_frequency
 		self.total_updates = 0
-		self.path = '../saved_models/' + args.game + '/' + args.agent_type + '/' + args.agent_name
+		self.path = './saved_models/' + args.game + '/' + args.agent_type + '/' + args.agent_name
+		print(self.path)
 		if not os.path.exists(self.path):
    			os.makedirs(self.path)
 		self.name = args.agent_name
@@ -88,8 +89,8 @@ class QNetwork():
 		self.saver = tf.train.Saver(self.policy_network_params)
 
 		if not args.watch:
-			param_hists = [tf.histogram_summary(name, param) for name, param in zip(self.param_names, self.policy_network_params)]
-			self.param_summaries = tf.merge_summary(param_hists)
+			param_hists = [tf.summary.histogram(name, param) for name, param in zip(self.param_names, self.policy_network_params)]
+			self.param_summaries = tf.summary.merge(param_hists)
 
 		# start tf session
 		gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.33333)  # avoid using all vram for GTX 970
@@ -103,7 +104,7 @@ class QNetwork():
 		else:
 			self.sess.run(tf.initialize_all_variables())
 			print("Network Initialized")
-			self.summary_writer = tf.train.SummaryWriter('../records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph)
+			self.summary_writer = tf.summary.FileWriter('./records/' + args.game + '/' + args.agent_type + '/' + args.agent_name + '/params', self.sess.graph)
 
 
 	def conv_relu(self, policy_input, target_input, kernel_shape, stride, layer_num):
@@ -225,7 +226,7 @@ class QNetwork():
 		''' build loss graph '''
 		with tf.name_scope("loss"):
 
-			predictions = tf.reduce_sum(tf.mul(self.policy_q_layer, self.actions), 1)
+			predictions = tf.reduce_sum(tf.multiply(self.policy_q_layer, self.actions), 1)
 			
 			max_action_values = None
 			if double_dqn: # Double Q-Learning:

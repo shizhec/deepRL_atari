@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib
-matplotlib.use('TKAgg')
+matplotlib.use("macOSX")
 from matplotlib import pyplot as plt
 import seaborn as sns
 
